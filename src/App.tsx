@@ -67,8 +67,14 @@ function makeFloret(index: number): Floret {
 }
 
 const INITIAL_FLORET_COUNT = 24;
+const OPEN_FLORET_COUNT = 2;
 const INTRO_BLOOM_MS = 10_000;
 const INTRO_TO_TEND_MS = 1_500;
+
+function seedBloom(): Floret[] {
+  const born = Date.now() - 60_000;
+  return Array.from({ length: OPEN_FLORET_COUNT }, (_, i) => ({ ...makeFloret(i), born }));
+}
 
 // ---------- Single hydrangea floret (4 teardrop petals in a cross) ----------
 function FloretShape({
@@ -186,7 +192,7 @@ type GrowMode = "grow" | "remove";
 
 export default function App() {
   const [step, setStep] = useState<Step>("open");
-  const [florets, setFlorets] = useState<Floret[]>([]);
+  const [florets, setFlorets] = useState<Floret[]>(seedBloom);
   const [mode, setMode] = useState<GrowMode>("grow");
   const [tasks, setTasks] = useState<{ id: number; text: string; done: boolean }[]>([]);
   const [taskInput, setTaskInput] = useState("");
@@ -638,7 +644,7 @@ export default function App() {
               </button>
               <button
                 type="button"
-                onClick={() => { setFlorets([]); setStep("open"); }}
+                onClick={() => { setFlorets(seedBloom()); setStep("open"); }}
                 style={{ ...btnStyle, flex: 1, background: "rgba(255,255,255,0.3)" }}
               >
                 とじる
