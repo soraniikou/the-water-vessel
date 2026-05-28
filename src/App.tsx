@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 
 // ============================================================
 //  the water vessel
-//  A small witnessing app — a hydrangea you grow with your own hands.
+//  A hydrangea you grow with your own hands.
 // ============================================================
 
 // ---------- Realistic blue hydrangea palette ----------
@@ -323,7 +323,7 @@ export default function App() {
 
       {/* The flower */}
       <svg
-        viewBox="-200 -200 400 580"
+        viewBox="-200 -200 400 780"
         width="100%"
         onClick={handleBloomBackgroundTap}
         style={{
@@ -334,12 +334,12 @@ export default function App() {
         }}
       >
         {/* transparent backdrop to catch "grow" taps on empty space */}
-        <rect x="-200" y="-200" width="400" height="580" fill="transparent" />
+        <rect x="-200" y="-200" width="400" height="780" fill="transparent" />
 
         {/* stem */}
         <path
-          d="M 0 110 C -7 175 9 238 -5 290"
-          stroke="#3a4a2c"
+          d="M 0 110 C -7 240 9 366 -5 470"
+          stroke="#5a6e4a"
           strokeWidth="3.5"
           fill="none"
           strokeLinecap="round"
@@ -349,19 +349,19 @@ export default function App() {
         <g>
           <defs>
             <linearGradient id="leafGradL" x1="0%" y1="0%" x2="100%" y2="50%">
-              <stop offset="0%" stopColor="#1f3320" /><stop offset="50%" stopColor="#2f4a30" /><stop offset="100%" stopColor="#3d5e3d" />
+              <stop offset="0%" stopColor="#3d5a3e" /><stop offset="50%" stopColor="#4d6e4e" /><stop offset="100%" stopColor="#5d8260" />
             </linearGradient>
           </defs>
-          <path d="M -2 170 Q -28 152 -52 158 Q -75 157 -88 197 Q -92 218 -80 233 Q -62 242 -42 233 Q -22 221 -8 200 Q -2 188 -2 170 Z"
-            fill="url(#leafGradL)" stroke="#1a2818" strokeWidth="0.6" strokeOpacity="0.5" />
-          <path d="M -2 182 Q -40 197 -82 212" stroke="#1a2818" strokeWidth="0.7" fill="none" opacity="0.6" />
-          <path d="M -18 185 Q -28 197 -34 212" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
-          <path d="M -40 191 Q -50 203 -56 221" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
-          <path d="M -60 200 Q -70 212 -74 228" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
+          <path d="M -2 230 Q -28 194 -52 206 Q -75 204 -88 284 Q -92 326 -80 356 Q -62 374 -42 356 Q -22 332 -8 290 Q -2 266 -2 230 Z"
+            fill="url(#leafGradL)" stroke="#2e442c" strokeWidth="0.6" strokeOpacity="0.45" />
+          <path d="M -2 254 Q -40 284 -82 314" stroke="#2e442c" strokeWidth="0.7" fill="none" opacity="0.5" />
+          <path d="M -18 260 Q -28 284 -34 314" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
+          <path d="M -40 272 Q -50 296 -56 332" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
+          <path d="M -60 290 Q -70 312 -74 346" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
           {step === "tend" && (
             <text
               x="-48"
-              y="200"
+              y="290"
               textAnchor="middle"
               fill="rgba(255,255,255,0.88)"
               fontSize="11"
@@ -378,15 +378,15 @@ export default function App() {
         <g>
           <defs>
             <linearGradient id="leafGradR" x1="100%" y1="0%" x2="0%" y2="50%">
-              <stop offset="0%" stopColor="#1f3320" /><stop offset="50%" stopColor="#2f4a30" /><stop offset="100%" stopColor="#3d5e3d" />
+              <stop offset="0%" stopColor="#3d5a3e" /><stop offset="50%" stopColor="#4d6e4e" /><stop offset="100%" stopColor="#5d8260" />
             </linearGradient>
           </defs>
-          <path d="M 2 208 Q 28 189 52 197 Q 75 208 88 238 Q 92 259 80 274 Q 62 281 42 272 Q 22 260 8 238 Q 2 226 2 208 Z"
-            fill="url(#leafGradR)" stroke="#1a2818" strokeWidth="0.6" strokeOpacity="0.5" />
-          <path d="M 2 221 Q 40 236 82 251" stroke="#1a2818" strokeWidth="0.7" fill="none" opacity="0.6" />
-          <path d="M 20 224 Q 30 236 36 251" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
-          <path d="M 42 230 Q 52 242 58 260" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
-          <path d="M 62 239 Q 72 251 76 266" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
+          <path d="M 2 306 Q 28 268 52 284 Q 75 306 88 366 Q 92 408 80 438 Q 62 452 42 434 Q 22 410 8 366 Q 2 342 2 306 Z"
+            fill="url(#leafGradR)" stroke="#2e442c" strokeWidth="0.6" strokeOpacity="0.45" />
+          <path d="M 2 332 Q 40 362 82 392" stroke="#2e442c" strokeWidth="0.7" fill="none" opacity="0.5" />
+          <path d="M 20 338 Q 30 362 36 392" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
+          <path d="M 42 350 Q 52 374 58 410" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
+          <path d="M 62 368 Q 72 392 76 422" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
         </g>
 
         {/* The bloom — dynamic florets */}
@@ -403,7 +403,7 @@ export default function App() {
         {fallenTasks.map((t, i) => {
           const c = PALETTE[i % PALETTE.length];
           const x = -100 + (i % 6) * 34 + (Math.floor(i / 6) % 2) * 17;
-          const y = 313 + Math.floor(i / 6) * 14;
+          const y = 516 + Math.floor(i / 6) * 14;
           const rot = (i * 47) % 360;
           return <FallenPetal key={t.id} x={x} y={y} inner={c.inner} outer={c.outer} rot={rot} delay={i * 0.15} />;
         })}
@@ -594,9 +594,6 @@ export default function App() {
         )}
       </div>
 
-      <p style={{ marginTop: "auto", paddingTop: "2rem", fontSize: "0.7rem", opacity: 0.45, letterSpacing: "0.2em", zIndex: 1 }}>
-        witnessing, not advising
-      </p>
     </div>
   );
 }
