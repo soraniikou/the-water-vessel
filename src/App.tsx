@@ -41,12 +41,12 @@ function positionForIndex(i: number): { x: number; y: number; r: number; rot: nu
   const golden = Math.PI * (3 - Math.sqrt(5)); // golden angle
   const a = i * golden;
   // radius grows with sqrt(i) so florets spread evenly, capped to keep a tight手毬
-  const radius = Math.min(90, 14 * Math.sqrt(i + 0.5));
-  const jitter = Math.sin(i * 12.9898) * 4;
+  const radius = Math.min(135, 21 * Math.sqrt(i + 0.5));
+  const jitter = Math.sin(i * 12.9898) * 6;
   return {
     x: Math.cos(a) * radius + jitter,
     y: Math.sin(a) * radius + jitter * 0.6,
-    r: 22 + (i % 3),
+    r: 33 + (i % 3),
     rot: (a * 180) / Math.PI + 30,
   };
 }
@@ -165,8 +165,8 @@ function FallenPetal({
       transform={`translate(${x} ${y}) rotate(${rot})`}
       style={{ opacity: 0, animation: `petalSettle 1.6s ease-out ${delay}s forwards` }}
     >
-      <ellipse rx="10" ry="7" fill={inner} opacity="0.85" />
-      <ellipse rx="10" ry="7" fill="none" stroke={outer} strokeWidth="0.5" />
+      <ellipse rx="15" ry="10.5" fill={inner} opacity="0.85" />
+      <ellipse rx="15" ry="10.5" fill="none" stroke={outer} strokeWidth="0.5" />
     </g>
   );
 }
@@ -323,7 +323,7 @@ export default function App() {
 
       {/* The flower */}
       <svg
-        viewBox="-200 -200 400 460"
+        viewBox="-200 -200 400 580"
         width="100%"
         onClick={handleBloomBackgroundTap}
         style={{
@@ -334,10 +334,16 @@ export default function App() {
         }}
       >
         {/* transparent backdrop to catch "grow" taps on empty space */}
-        <rect x="-200" y="-200" width="400" height="460" fill="transparent" />
+        <rect x="-200" y="-200" width="400" height="580" fill="transparent" />
 
         {/* stem */}
-        <path d="M 0 110 Q -3 160 -1 230" stroke="#3a4a2c" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+        <path
+          d="M 0 110 C -7 175 9 238 -5 290"
+          stroke="#3a4a2c"
+          strokeWidth="3.5"
+          fill="none"
+          strokeLinecap="round"
+        />
 
         {/* Left leaf */}
         <g>
@@ -346,12 +352,26 @@ export default function App() {
               <stop offset="0%" stopColor="#1f3320" /><stop offset="50%" stopColor="#2f4a30" /><stop offset="100%" stopColor="#3d5e3d" />
             </linearGradient>
           </defs>
-          <path d="M -2 150 Q -28 138 -52 142 Q -75 148 -88 168 Q -92 182 -80 192 Q -62 198 -42 192 Q -22 184 -8 170 Q -2 162 -2 150 Z"
+          <path d="M -2 170 Q -28 152 -52 158 Q -75 157 -88 197 Q -92 218 -80 233 Q -62 242 -42 233 Q -22 221 -8 200 Q -2 188 -2 170 Z"
             fill="url(#leafGradL)" stroke="#1a2818" strokeWidth="0.6" strokeOpacity="0.5" />
-          <path d="M -2 158 Q -40 168 -82 178" stroke="#1a2818" strokeWidth="0.7" fill="none" opacity="0.6" />
-          <path d="M -18 160 Q -28 168 -34 178" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
-          <path d="M -40 164 Q -50 172 -56 184" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
-          <path d="M -60 170 Q -70 178 -74 188" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
+          <path d="M -2 182 Q -40 197 -82 212" stroke="#1a2818" strokeWidth="0.7" fill="none" opacity="0.6" />
+          <path d="M -18 185 Q -28 197 -34 212" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
+          <path d="M -40 191 Q -50 203 -56 221" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
+          <path d="M -60 200 Q -70 212 -74 228" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
+          {step === "tend" && (
+            <text
+              x="-48"
+              y="200"
+              textAnchor="middle"
+              fill="rgba(255,255,255,0.88)"
+              fontSize="11"
+              fontFamily="'Shippori Mincho', 'Noto Serif JP', serif"
+              letterSpacing="0.08em"
+              style={{ pointerEvents: "none", userSelect: "none" }}
+            >
+              いま{florets.length}輪
+            </text>
+          )}
         </g>
 
         {/* Right leaf */}
@@ -361,12 +381,12 @@ export default function App() {
               <stop offset="0%" stopColor="#1f3320" /><stop offset="50%" stopColor="#2f4a30" /><stop offset="100%" stopColor="#3d5e3d" />
             </linearGradient>
           </defs>
-          <path d="M 2 175 Q 28 163 52 168 Q 75 175 88 195 Q 92 209 80 219 Q 62 224 42 218 Q 22 210 8 195 Q 2 187 2 175 Z"
+          <path d="M 2 208 Q 28 189 52 197 Q 75 208 88 238 Q 92 259 80 274 Q 62 281 42 272 Q 22 260 8 238 Q 2 226 2 208 Z"
             fill="url(#leafGradR)" stroke="#1a2818" strokeWidth="0.6" strokeOpacity="0.5" />
-          <path d="M 2 184 Q 40 194 82 204" stroke="#1a2818" strokeWidth="0.7" fill="none" opacity="0.6" />
-          <path d="M 20 186 Q 30 194 36 204" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
-          <path d="M 42 190 Q 52 198 58 210" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
-          <path d="M 62 196 Q 72 204 76 214" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
+          <path d="M 2 221 Q 40 236 82 251" stroke="#1a2818" strokeWidth="0.7" fill="none" opacity="0.6" />
+          <path d="M 20 224 Q 30 236 36 251" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
+          <path d="M 42 230 Q 52 242 58 260" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
+          <path d="M 62 239 Q 72 251 76 266" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
         </g>
 
         {/* The bloom — dynamic florets */}
@@ -383,7 +403,7 @@ export default function App() {
         {fallenTasks.map((t, i) => {
           const c = PALETTE[i % PALETTE.length];
           const x = -100 + (i % 6) * 34 + (Math.floor(i / 6) % 2) * 17;
-          const y = 245 + Math.floor(i / 6) * 14;
+          const y = 313 + Math.floor(i / 6) * 14;
           const rot = (i * 47) % 360;
           return <FallenPetal key={t.id} x={x} y={y} inner={c.inner} outer={c.outer} rot={rot} delay={i * 0.15} />;
         })}
@@ -429,14 +449,8 @@ export default function App() {
               </button>
             </div>
 
-            {/* floret count + quick add button for "grow" mode */}
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              fontSize: "0.85rem", color: "#5a5a5a", marginBottom: "0.8rem",
-              padding: "0 0.4rem",
-            }}>
-              <span>いま {florets.length} 輪</span>
-              {mode === "grow" && (
+            {mode === "grow" && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.8rem" }}>
                 <button
                   type="button"
                   onClick={addFloret}
@@ -450,8 +464,8 @@ export default function App() {
                 >
                   + ひとつ 咲かせる
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             <button type="button" onClick={() => setStep("task")} style={{ ...btnStyle, background: accentColor, color: "#fff" }}>
               この花で、すすむ
