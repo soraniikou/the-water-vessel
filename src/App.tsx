@@ -66,18 +66,18 @@ function makeFloret(index: number): Floret {
   };
 }
 
-// Initial bloom — 24 florets
-function initialBloom(): Floret[] {
-  return Array.from({ length: 24 }, (_, i) => makeFloret(i));
-}
+const INITIAL_FLORET_COUNT = 24;
+const INTRO_BLOOM_MS = 10_000;
+const INTRO_TO_TEND_MS = 1_500;
 
 // ---------- Single hydrangea floret (4 teardrop petals in a cross) ----------
 function FloretShape({
-  floret, mode, onTap,
+  floret, mode, onTap, useFloatIn = false,
 }: {
   floret: Floret;
   mode: GrowMode;
   onTap: (id: number) => void;
+  useFloatIn?: boolean;
 }) {
   const { x: cx, y: cy, r: size, rot, inner, outer, tip, seed } = {
     ...floret,
@@ -93,9 +93,12 @@ function FloretShape({
   const gradId = `pg-${seed}`;
   const tipGradId = `pt-${seed}`;
 
-  // newly born florets scale in
-  const age = Date.now() - floret.born;
-  const isNew = age < 700;
+  const now = Date.now();
+  if (now < floret.born) return null;
+
+  const age = now - floret.born;
+  const isFloating = useFloatIn && age < 2800;
+  const isNew = !useFloatIn && age < 700;
 
   return (
     <g
@@ -105,7 +108,11 @@ function FloretShape({
         cursor: mode === "remove" ? "pointer" : "default",
         transformOrigin: "center",
         transformBox: "fill-box",
-        animation: isNew ? "floretBloom 0.7s ease-out both" : undefined,
+        animation: isFloating
+          ? "floretFloatIn 2.8s ease-out both"
+          : isNew
+            ? "floretBloom 0.7s ease-out both"
+            : undefined,
       }}
     >
       <defs>
@@ -174,24 +181,31 @@ function FallenPetal({
 // ============================================================
 //  Main App
 // ============================================================
-type Step = "open" | "tend" | "task" | "leaving" | "home";
+type Step = "open" | "awakening" | "tend" | "task" | "leaving" | "home";
 type GrowMode = "grow" | "remove";
 
 export default function App() {
   const [step, setStep] = useState<Step>("open");
-  const [florets, setFlorets] = useState<Floret[]>(initialBloom);
+  const [florets, setFlorets] = useState<Floret[]>([]);
   const [mode, setMode] = useState<GrowMode>("grow");
   const [tasks, setTasks] = useState<{ id: number; text: string; done: boolean }[]>([]);
   const [taskInput, setTaskInput] = useState("");
   const [breathPhase, setBreathPhase] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // re-render tick so "isNew" bloom animation resolves cleanly
+  // re-render tick so bloom animations resolve cleanly
   const [, force] = useState(0);
   useEffect(() => {
-    if (step !== "tend") return;
-    const id = setInterval(() => force((n) => n + 1), 800);
+    if (step !== "tend" && step !== "awakening") return;
+    const id = setInterval(() => force((n) => n + 1), 80);
     return () => clearInterval(id);
+  }, [step]);
+
+  // after intro bloom, gently move to tend
+  useEffect(() => {
+    if (step !== "awakening") return;
+    const id = setTimeout(() => setStep("tend"), INTRO_BLOOM_MS + INTRO_TO_TEND_MS);
+    return () => clearTimeout(id);
   }, [step]);
 
   // Breath cycle on "leaving" screen
@@ -235,6 +249,16 @@ export default function App() {
   // tapping empty space in grow mode adds a floret
   const handleBloomBackgroundTap = () => {
     if (step === "tend" && mode === "grow") addFloret();
+  };
+
+  const startIntro = () => {
+    const start = Date.now();
+    const bloom = Array.from({ length: INITIAL_FLORET_COUNT }, (_, i) => {
+      const f = makeFloret(i);
+      return { ...f, born: start + (i / INITIAL_FLORET_COUNT) * INTRO_BLOOM_MS };
+    });
+    setFlorets(bloom);
+    setStep("awakening");
   };
 
   return (
@@ -284,6 +308,21 @@ export default function App() {
           60%  { opacity: 1; transform: scale(1.12); }
           100% { opacity: 1; transform: scale(1); }
         }
+        @keyframes floretFloatIn {
+          0%   { opacity: 0; transform: scale(0.12) translateY(18px); }
+          35%  { opacity: 0.55; transform: scale(0.85) translateY(-6px); }
+          65%  { opacity: 0.92; transform: scale(1.1) translateY(3px); }
+          85%  { opacity: 1; transform: scale(0.97) translateY(-2px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes panelReveal {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bloomReveal {
+          from { opacity: 0.85; }
+          to   { opacity: 1; }
+        }
         @keyframes breatheIn {
           0%   { transform: scale(1);    opacity: 0.85; }
           100% { transform: scale(1.06); opacity: 1; }
@@ -313,8 +352,9 @@ export default function App() {
           the water vessel
         </h1>
         <p className="voice-line" style={{ marginTop: "0.4rem" }}>
-          {step === "open"    && "（声：今日もここにあるよ）"}
-          {step === "tend"    && (mode === "grow" ? "空いたところを そっと 押すと、咲きます" : "花びらを 押すと、ひとつ 手放せます")}
+          {step === "open"      && "（声：今日もここにあるよ）"}
+          {step === "awakening" && ""}
+          {step === "tend"      && (mode === "grow" ? "空いたところを そっと 押すと、咲きます" : "花びらを 押すと、ひとつ 手放せます")}
           {step === "task"    && ""}
           {step === "leaving" && "（声：重いまま、いっていいよ）"}
           {step === "home"    && "（声：よく ここまできたね）"}
@@ -392,10 +432,20 @@ export default function App() {
         {/* The bloom — dynamic florets */}
         <g style={{
           transformOrigin: "center",
-          animation: step === "leaving" ? "breatheIn 5s ease-in-out infinite alternate" : undefined,
+          animation: step === "leaving"
+            ? "breatheIn 5s ease-in-out infinite alternate"
+            : step === "awakening"
+              ? "bloomReveal 1.5s ease-out both"
+              : undefined,
         }}>
           {florets.map((f) => (
-            <FloretShape key={f.id} floret={f} mode={mode} onTap={removeFloret} />
+            <FloretShape
+              key={f.id}
+              floret={f}
+              mode={mode}
+              onTap={removeFloret}
+              useFloatIn={step === "awakening"}
+            />
           ))}
         </g>
 
@@ -412,13 +462,13 @@ export default function App() {
       {/* Interaction panel */}
       <div style={{ width: "100%", maxWidth: 360, marginTop: "1rem", zIndex: 1 }}>
         {step === "open" && (
-          <button type="button" onClick={() => setStep("tend")} style={btnStyle}>
+          <button type="button" onClick={startIntro} style={btnStyle}>
             ここに いる
           </button>
         )}
 
         {step === "tend" && (
-          <div className="fade-up">
+          <div style={{ animation: "panelReveal 1.5s ease-out both" }}>
             {/* mode switch — always visible operation panel */}
             <div style={{
               display: "flex", gap: "0.5rem", marginBottom: "0.8rem",
@@ -586,7 +636,11 @@ export default function App() {
               <button type="button" onClick={() => setStep("task")} style={{ ...btnStyle, flex: 1 }}>
                 もうひとつ 置く
               </button>
-              <button type="button" onClick={() => setStep("open")} style={{ ...btnStyle, flex: 1, background: "rgba(255,255,255,0.3)" }}>
+              <button
+                type="button"
+                onClick={() => { setFlorets([]); setStep("open"); }}
+                style={{ ...btnStyle, flex: 1, background: "rgba(255,255,255,0.3)" }}
+              >
                 とじる
               </button>
             </div>
