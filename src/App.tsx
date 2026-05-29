@@ -352,8 +352,9 @@ export default function App() {
       {/* Header */}
       <div className="fade-up" style={{ marginBottom: "0.5rem", textAlign: "center", zIndex: 1 }}>
         <h1 style={{
-          fontSize: "1.5rem", fontWeight: 300, letterSpacing: "0.3em",
-          margin: 0, fontStyle: "italic", color: "#3a3a3a",
+          fontFamily: "'Great Vibes', cursive",
+          fontSize: "2.8rem", fontWeight: 400, letterSpacing: "0.04em",
+          margin: 0, fontStyle: "normal", color: "#3a3a3a",
         }}>
           the water vessel
         </h1>
@@ -504,24 +505,6 @@ export default function App() {
                 花びらを 消す
               </button>
             </div>
-
-            {mode === "grow" && (
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.8rem" }}>
-                <button
-                  type="button"
-                  onClick={addFloret}
-                  disabled={florets.length >= MAX_FLORETS}
-                  style={{
-                    ...pillStyle, flex: "0 0 auto", padding: "0.4rem 1rem",
-                    background: florets.length >= MAX_FLORETS ? "rgba(200,200,200,0.4)" : "rgba(255,255,255,0.6)",
-                    border: `1px solid ${accentDeep}`,
-                    cursor: florets.length >= MAX_FLORETS ? "default" : "pointer",
-                  }}
-                >
-                  + ひとつ 咲かせる
-                </button>
-              </div>
-            )}
 
             <button type="button" onClick={() => setStep("task")} style={{ ...btnStyle, background: accentColor, color: "#fff" }}>
               この花で、すすむ
