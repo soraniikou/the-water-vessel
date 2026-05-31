@@ -539,15 +539,16 @@ export default function App() {
                   setTaskInput("");
                 }
               }}
-              placeholder="例：あの返信を書く"
+              placeholder="言いたいこと書いて"
               style={{
-                width: "100%", padding: "0.8rem 1rem",
+                width: "100%", padding: "0.56rem 0.7rem",
                 border: `1px solid ${accentDeep}`, borderRadius: "999px",
                 background: "rgba(255,255,255,0.6)", fontFamily: "inherit",
-                fontSize: "1rem", color: "#3a3a3a", outline: "none",
+                fontSize: "0.7rem", color: "#3a3a3a", outline: "none",
                 marginBottom: "0.8rem", boxSizing: "border-box", transition: "all 0.3s ease",
               }} />
-            <button type="button" onClick={() => setStep("reflection")} style={{ ...btnStyle, background: accentColor, color: "#fff" }}>
+            <button type="button" onClick={() => setStep("reflection")}
+              style={{ ...btnStyle, padding: "0.49rem 0.84rem", fontSize: "0.665rem", letterSpacing: "0.105em", background: accentColor, color: "#fff" }}>
               いってきます
             </button>
             {activeTasks.length > 0 && (
