@@ -350,6 +350,11 @@ export default function App() {
           0%   { transform: translateX(-50%) scale(0.3); opacity: 0.6; }
           100% { transform: translateX(-50%) scale(2.4); opacity: 0; }
         }
+        @keyframes rippleWide {
+          0%   { transform: translateX(-50%) scale(0.3); opacity: 0.95; }
+          60%  { opacity: 0.7; }
+          100% { transform: translateX(-50%) scale(4.8); opacity: 0; }
+        }
         @keyframes waterShimmer { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.85; } }
         @keyframes petalStream {
           0%   { transform: translate(0, 0) scale(1); opacity: 0.85; }
@@ -372,6 +377,16 @@ export default function App() {
         @keyframes stemGrow {
           from { transform: scaleY(1); }
           to   { transform: scaleY(2); }
+        }
+        @keyframes spin12 {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        @keyframes petalFall {
+          0%   { transform: translateY(-12vh) rotate(0deg); opacity: 0; }
+          12%  { opacity: 0.95; }
+          88%  { opacity: 0.95; }
+          100% { transform: translateY(110vh) rotate(380deg); opacity: 0; }
         }
         /* handover caption: lower on desktop, closer to center on mobile */
         .handover-caption { top: calc(50% + 100px); }
@@ -602,8 +617,9 @@ export default function App() {
               </svg>
               <div style={{
                 position: "absolute", top: "10%", left: "50%", width: "60px", height: "12px",
-                border: "1px solid rgba(255,255,255,0.6)", borderRadius: "50%",
-                animation: "ripple 10.5s ease-out 1.5s infinite", pointerEvents: "none",
+                border: "2px solid rgba(255,255,255,0.98)", borderRadius: "50%",
+                boxShadow: "0 0 10px rgba(255,255,255,0.85)",
+                animation: "rippleWide 10.5s ease-out 1.5s infinite", pointerEvents: "none",
               }} />
             </div>
           </div>
@@ -646,7 +662,7 @@ export default function App() {
                   const sx = f.x * 0.55;
                   const sy = f.y * 0.55 - 40;
                   return (
-                    <g key={f.id} transform={`translate(${sx} ${sy})`}>
+                    <g key={f.id} transform={`translate(${sx} ${sy}) scale(2)`}>
                       {[0, 90, 180, 270].map((a) => (
                         <path key={a} d="M 0 0 C 8 -1, 8 -12, 0 -16 C -8 -12, -8 -1, 0 0 Z"
                           transform={`rotate(${a + i * 3})`} fill={c.inner} stroke={c.outer} strokeWidth="0.4" opacity="0.95" />
@@ -807,6 +823,30 @@ export default function App() {
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           padding: "2rem 1.5rem", animation: "fadeUp 1.4s ease-out both",
         }}>
+          {/* small petals drifting down after the touch — continues until back */}
+          {handoverTouched && (
+            <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+              {Array.from({ length: 14 }).map((_, i) => {
+                const c = PINK_PALETTE[i % PINK_PALETTE.length];
+                const left = (i * 37 + 6) % 100;
+                const dur = 7 + (i % 5) * 1.6;
+                const delay = (i % 7) * 0.7;
+                const size = 7 + (i % 3) * 3;
+                return (
+                  <div key={i} style={{
+                    position: "absolute", top: 0, left: `${left}%`,
+                    width: size, height: size * 0.72,
+                    background: c.inner,
+                    borderRadius: "50% 50% 50% 50% / 62% 62% 38% 38%",
+                    boxShadow: `0 0 4px ${c.outer}`,
+                    opacity: 0,
+                    animation: `petalFall ${dur}s linear ${delay}s infinite`,
+                  }} />
+                );
+              })}
+            </div>
+          )}
+
           <div style={{
             position: "absolute", left: "50%", top: "50%",
             transform: "translate(-50%, 0)",
@@ -821,11 +861,15 @@ export default function App() {
               audioRef.current = audio;
               audio.play().catch(() => {});
             }}>
-            <svg viewBox="-50 -50 100 100" width="120" height="120" style={{
-              display: "block",
-              animation: !handoverTouched ? "petalGlow 2.8s ease-in-out infinite" : undefined,
+            <div style={{
               transition: "transform 0.6s ease",
               transform: handoverTouched ? "scale(1.15)" : "scale(1)",
+            }}>
+            <svg viewBox="-50 -50 100 100" width="120" height="120" style={{
+              display: "block",
+              animation: handoverTouched
+                ? "spin12 12s linear infinite"
+                : "petalGlow 2.8s ease-in-out infinite, spin12 12s linear infinite",
             }}>
               <defs>
                 <radialGradient id="handoverGrad" cx="50%" cy="80%" r="90%">
@@ -849,6 +893,7 @@ export default function App() {
               <circle r="4" fill="#b5497e" opacity="0.85" />
               <circle r="1.5" fill="#fff8d8" opacity="0.7" />
             </svg>
+            </div>
           </div>
 
           <div className="handover-caption" style={{
