@@ -74,6 +74,18 @@ const OPEN_FLORET_COUNT = 2;
 const INTRO_BLOOM_MS = 10_000;
 const INTRO_TO_TEND_MS = 1_500;
 
+// ---------- Blessing scene (pink hydrangea + slow droplet + message) ----------
+const PINK_PALETTE: { inner: string; outer: string }[] = [
+  { inner: "#e8a8c4", outer: "#c97f9e" },
+  { inner: "#f0bcd2", outer: "#d692ae" },
+  { inner: "#e89ab8", outer: "#c06e92" },
+  { inner: "#f4c8da", outer: "#dca0bc" },
+  { inner: "#e6b0c8", outer: "#c885a4" },
+];
+const BLESSING_MESSAGE = "あなたは美しい　価値ある人";
+const BLESSING_DROP_MS = 10_000;
+const BLESSING_TYPE_MS = 380;
+
 function seedBloom(): Floret[] {
   const born = Date.now() - 60_000;
   return Array.from({ length: OPEN_FLORET_COUNT }, (_, i) => ({ ...makeFloret(i), born }));
@@ -160,7 +172,7 @@ function FallenPetal({
 }
 
 type Step = "open" | "awakening" | "tend" | "task"
-          | "reflection" | "revealing" | "handover";
+          | "reflection" | "blessing" | "revealing" | "handover";
 type GrowMode = "grow" | "remove";
 
 export default function App() {
@@ -176,6 +188,9 @@ export default function App() {
   const [audioPlayed, setAudioPlayed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const [dropletLanded, setDropletLanded] = useState(false);
+  const [blessingTyped, setBlessingTyped] = useState(0);
+
   const [, force] = useState(0);
   useEffect(() => {
     if (step !== "tend" && step !== "awakening") return;
@@ -188,6 +203,22 @@ export default function App() {
     const id = setTimeout(() => setStep("tend"), INTRO_BLOOM_MS + INTRO_TO_TEND_MS);
     return () => clearTimeout(id);
   }, [step]);
+
+  // Blessing scene: droplet takes 10s to fall, then the message is typed out
+  useEffect(() => {
+    if (step !== "blessing") return;
+    setDropletLanded(false);
+    setBlessingTyped(0);
+    const id = setTimeout(() => setDropletLanded(true), BLESSING_DROP_MS);
+    return () => clearTimeout(id);
+  }, [step]);
+
+  useEffect(() => {
+    if (step !== "blessing" || !dropletLanded) return;
+    if (blessingTyped >= BLESSING_MESSAGE.length) return;
+    const id = setTimeout(() => setBlessingTyped((n) => n + 1), BLESSING_TYPE_MS);
+    return () => clearTimeout(id);
+  }, [step, dropletLanded, blessingTyped]);
 
   useEffect(() => {
     if (step === "handover") {
@@ -290,6 +321,12 @@ export default function App() {
         @keyframes waterRise {
           0%   { transform: translateY(100%); opacity: 0; }
           100% { transform: translateY(0%);   opacity: 1; }
+        }
+        @keyframes blessingDrop {
+          0%   { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+          6%   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+          90%  { opacity: 1; }
+          100% { transform: translate(-50%, var(--drop-dist, 150px)) scale(1.2, 0.75); opacity: 0.85; }
         }
         @keyframes ripple {
           0%   { transform: translateX(-50%) scale(0.3); opacity: 0.6; }
@@ -552,7 +589,7 @@ export default function App() {
             映った姿も、本物
           </p>
 
-          <button type="button" onClick={() => setStep("revealing")}
+          <button type="button" onClick={() => setStep("blessing")}
             style={{
               position: "absolute", bottom: "2.5rem", right: "1.5rem",
               padding: "0.6rem 1.4rem", fontFamily: "inherit",
@@ -561,8 +598,94 @@ export default function App() {
               borderRadius: "999px", color: "#2a3a52", cursor: "pointer",
               opacity: 0, animation: "whisperIn 1.4s ease-out 4s forwards",
             }}>
-            →
+            next →
           </button>
+        </div>
+      )}
+
+      {step === "blessing" && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 10,
+          background: "linear-gradient(180deg, #f6e9ef 0%, #f0d8e4 55%, #e8c4d6 100%)",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          padding: "1.5rem", animation: "fadeUp 1.4s ease-out both",
+        }}>
+          <div style={{ position: "relative", width: "100%", maxWidth: 300 }}>
+            <svg viewBox="-120 -150 240 330" width="100%" style={{ display: "block" }}>
+              <path d="M 0 30 Q 8 120 -2 230" stroke="#6e8a5a" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+              <g>
+                {florets.slice(0, Math.min(florets.length, 28)).map((f, i) => {
+                  const c = PINK_PALETTE[i % PINK_PALETTE.length];
+                  const sx = f.x * 0.55;
+                  const sy = f.y * 0.55 - 40;
+                  return (
+                    <g key={f.id} transform={`translate(${sx} ${sy})`}>
+                      {[0, 90, 180, 270].map((a) => (
+                        <path key={a} d="M 0 0 C 8 -1, 8 -12, 0 -16 C -8 -12, -8 -1, 0 0 Z"
+                          transform={`rotate(${a + i * 3})`} fill={c.inner} stroke={c.outer} strokeWidth="0.4" opacity="0.95" />
+                      ))}
+                      <circle r="1.4" fill={c.outer} opacity="0.7" />
+                    </g>
+                  );
+                })}
+              </g>
+            </svg>
+
+            {!dropletLanded && (
+              <div style={{
+                position: "absolute", left: "50%", top: "28%",
+                ["--drop-dist" as any]: "150px",
+                animation: "blessingDrop 10s ease-in forwards",
+              }}>
+                <svg viewBox="-6 -8 12 16" width="13" height="17" style={{ display: "block" }}>
+                  <defs>
+                    <radialGradient id="blessingDropGrad" cx="50%" cy="35%" r="65%">
+                      <stop offset="0%"  stopColor="#ffffff" stopOpacity="0.95" />
+                      <stop offset="55%" stopColor="#f7dfeb" stopOpacity="0.9" />
+                      <stop offset="100%" stopColor="#e2a6c4" stopOpacity="0.85" />
+                    </radialGradient>
+                  </defs>
+                  <path d="M 0 -7 Q -5 0 -5 4 Q -5 8 0 8 Q 5 8 5 4 Q 5 0 0 -7 Z"
+                    fill="url(#blessingDropGrad)" stroke="#d98ab0" strokeWidth="0.3" strokeOpacity="0.5" />
+                </svg>
+              </div>
+            )}
+
+            {dropletLanded && (
+              <div style={{
+                position: "absolute", left: "50%", top: "calc(28% + 150px)",
+                width: "34px", height: "8px", transform: "translate(-50%, -50%)",
+                border: "1px solid rgba(214,138,176,0.6)", borderRadius: "50%",
+                animation: "ripple 2.4s ease-out 0s 2", pointerEvents: "none",
+              }} />
+            )}
+          </div>
+
+          <p style={{
+            marginTop: "2rem", minHeight: "3em",
+            fontSize: "1.25rem", letterSpacing: "0.22em", lineHeight: 2,
+            color: "#a64d7a", fontStyle: "italic", textAlign: "center",
+            fontFamily: "inherit",
+          }}>
+            {BLESSING_MESSAGE.slice(0, blessingTyped)}
+            {dropletLanded && blessingTyped < BLESSING_MESSAGE.length && (
+              <span style={{ opacity: 0.4 }}>｜</span>
+            )}
+          </p>
+
+          {blessingTyped >= BLESSING_MESSAGE.length && (
+            <button type="button" onClick={() => setStep("revealing")}
+              style={{
+                position: "absolute", bottom: "2.5rem", right: "1.5rem",
+                padding: "0.6rem 1.4rem", fontFamily: "inherit",
+                fontSize: "0.85rem", letterSpacing: "0.25em",
+                background: "transparent", border: "1px solid rgba(166,77,122,0.4)",
+                borderRadius: "999px", color: "#a64d7a", cursor: "pointer",
+                opacity: 0, animation: "whisperIn 1.4s ease-out 0.2s forwards",
+              }}>
+              next →
+            </button>
+          )}
         </div>
       )}
 
