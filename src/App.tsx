@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 
 // ============================================================
 //  the water vessel
-//  A small witnessing app — a hydrangea that holds your day.
+//  A hydrangea you grow with your own hands.
 // ============================================================
 
 // ---------- Realistic blue hydrangea palette ----------
@@ -21,86 +21,123 @@ const PALETTE: { inner: string; outer: string; tip: string }[] = [
   { inner: "#7898c4", outer: "#4870a0", tip: "#ccdcec" },
 ];
 
-// ---------- Mood options ----------
-type Mood = { id: string; label: string; sky: string };
-const MOODS: Mood[] = [
-  { id: "heavy",    label: "重い",     sky: "#b8bdc8" },
-  { id: "moya",     label: "モヤモヤ", sky: "#c2c5cf" },
-  { id: "zawa",     label: "ザワザワ", sky: "#c8c2cd" },
-  { id: "shindoi",  label: "しんどい", sky: "#bdc5cc" },
-  { id: "bonyari",  label: "ぼんやり", sky: "#cccdd1" },
-  { id: "kanashii", label: "かなしい", sky: "#c0c6d0" },
+// ---------- Accent palette for florets added one at a time ----------
+// 紫 / 淡いピンク / 白 / 紺 / 薄い水色
+const ACCENT_PALETTE: { inner: string; outer: string; tip: string }[] = [
+  { inner: "#9b7fc4", outer: "#6e52a0", tip: "#d4c4e8" }, // 紫
+  { inner: "#e6acc4", outer: "#c97f9e", tip: "#f6e0ec" }, // 淡いピンク
+  { inner: "#eef0f6", outer: "#c4c8d4", tip: "#ffffff" }, // 白
+  { inner: "#39497c", outer: "#222e52", tip: "#8a9ac2" }, // 紺
+  { inner: "#aad2ea", outer: "#79aed2", tip: "#ddf1f9" }, // 薄い水色
 ];
 
-// ---------- Densely packed petal positions ----------
-const PETAL_POSITIONS: { x: number; y: number; r: number; rot: number; seed: number }[] = (() => {
-  const arr: { x: number; y: number; r: number; rot: number; seed: number }[] = [];
-  let seed = 1;
+const PALETTE_BASE_LEN = PALETTE.length;
+PALETTE.push(...ACCENT_PALETTE);
 
-  // Outer ring — 12 florets
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
-    const jx = Math.sin(seed * 1.7) * 6;
-    const jy = Math.cos(seed * 2.3) * 6;
-    arr.push({
-      x: Math.cos(a) * 78 + jx,
-      y: Math.sin(a) * 78 + jy,
-      r: 24 + (seed % 3),
-      rot: (a * 180) / Math.PI + 90,
-      seed: seed++,
-    });
-  }
+function randomAccentColorIndex(): number {
+  return PALETTE_BASE_LEN + Math.floor(Math.random() * ACCENT_PALETTE.length);
+}
 
-  // Middle ring — 10 florets
-  for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2 - Math.PI / 2 + 0.3;
-    const jx = Math.sin(seed * 1.7) * 5;
-    const jy = Math.cos(seed * 2.3) * 5;
-    arr.push({
-      x: Math.cos(a) * 46 + jx,
-      y: Math.sin(a) * 46 + jy,
-      r: 23 + (seed % 3),
-      rot: (a * 180) / Math.PI + 60,
-      seed: seed++,
-    });
-  }
+// ---------- A single floret's data ----------
+type Floret = {
+  id: number;
+  x: number;
+  y: number;
+  r: number;
+  rot: number;
+  seed: number;
+  colorIndex: number;
+  born: number; // timestamp, used to animate new florets in
+};
 
-  // Inner ring — 6 florets
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2 - Math.PI / 2 + 0.6;
-    arr.push({
-      x: Math.cos(a) * 22,
-      y: Math.sin(a) * 22,
-      r: 22 + (seed % 2),
-      rot: (a * 180) / Math.PI + 30,
-      seed: seed++,
-    });
-  }
+const MAX_FLORETS = 60;
 
-  // Center — 2 florets
-  arr.push({ x: 0,  y: 0, r: 22, rot: 15, seed: seed++ });
-  arr.push({ x: -6, y: 8, r: 21, rot: 80, seed: seed++ });
+// Generate a position on a spiral so new florets fill the bloom naturally
+// (phyllotaxis / sunflower spiral keeps the cluster looking organic).
+function positionForIndex(i: number): { x: number; y: number; r: number; rot: number } {
+  const golden = Math.PI * (3 - Math.sqrt(5)); // golden angle
+  const a = i * golden;
+  // radius grows with sqrt(i) so florets spread evenly, capped to keep a tight手毬
+  const radius = Math.min(135, 21 * Math.sqrt(i + 0.5));
+  const jitter = Math.sin(i * 12.9898) * 6;
+  return {
+    x: Math.cos(a) * radius + jitter,
+    y: Math.sin(a) * radius + jitter * 0.6,
+    r: 33 + (i % 3),
+    rot: (a * 180) / Math.PI + 30,
+  };
+}
 
-  return arr;
-})();
+let floretCounter = 0;
+function makeFloret(index: number, colorIndex?: number): Floret {
+  const p = positionForIndex(index);
+  return {
+    id: floretCounter++,
+    x: p.x,
+    y: p.y,
+    r: p.r,
+    rot: p.rot,
+    seed: index + 1,
+    colorIndex: colorIndex ?? index % PALETTE_BASE_LEN,
+    born: Date.now(),
+  };
+}
+
+const INITIAL_FLORET_COUNT = 24;
+const OPEN_FLORET_COUNT = 2;
+const INTRO_BLOOM_MS = 10_000;
+const INTRO_TO_TEND_MS = 1_500;
+
+function seedBloom(): Floret[] {
+  const born = Date.now() - 60_000;
+  return Array.from({ length: OPEN_FLORET_COUNT }, (_, i) => ({ ...makeFloret(i), born }));
+}
 
 // ---------- Single hydrangea floret (4 teardrop petals in a cross) ----------
-function Floret({
-  cx, cy, size, rot, inner, outer, tip, seed,
+function FloretShape({
+  floret, mode, onTap, useFloatIn = false,
 }: {
-  cx: number; cy: number; size: number; rot: number;
-  inner: string; outer: string; tip: string; seed: number;
+  floret: Floret;
+  mode: GrowMode;
+  onTap: (id: number) => void;
+  useFloatIn?: boolean;
 }) {
+  const { x: cx, y: cy, r: size, rot, inner, outer, tip, seed } = {
+    ...floret,
+    inner: PALETTE[floret.colorIndex].inner,
+    outer: PALETTE[floret.colorIndex].outer,
+    tip: PALETTE[floret.colorIndex].tip,
+  };
   const s = size * 0.62;
   const rand = (n: number) => {
-    const x = Math.sin(seed * 9.7 + n * 3.1) * 10000;
-    return x - Math.floor(x);
+    const v = Math.sin(seed * 9.7 + n * 3.1) * 10000;
+    return v - Math.floor(v);
   };
   const gradId = `pg-${seed}`;
   const tipGradId = `pt-${seed}`;
 
+  const now = Date.now();
+  if (now < floret.born) return null;
+
+  const age = now - floret.born;
+  const isFloating = useFloatIn && age < 2800;
+  const isNew = !useFloatIn && age < 700;
+
   return (
-    <g transform={`translate(${cx} ${cy}) rotate(${rot})`}>
+    <g
+      transform={`translate(${cx} ${cy}) rotate(${rot})`}
+      onClick={(e) => { e.stopPropagation(); onTap(floret.id); }}
+      style={{
+        cursor: mode === "remove" ? "pointer" : "default",
+        transformOrigin: "center",
+        transformBox: "fill-box",
+        animation: isFloating
+          ? "floretFloatIn 2.8s ease-out both"
+          : isNew
+            ? "floretBloom 0.7s ease-out both"
+            : undefined,
+      }}
+    >
       <defs>
         <radialGradient id={gradId} cx="50%" cy="85%" r="95%">
           <stop offset="0%"  stopColor={outer} stopOpacity="0.95" />
@@ -113,12 +150,16 @@ function Floret({
         </radialGradient>
       </defs>
 
+      {/* In "remove" mode, a faint ring hints the floret is tappable */}
+      {mode === "remove" && (
+        <circle r={s * 1.15} fill="none" stroke={outer} strokeWidth="0.8" strokeOpacity="0.35" strokeDasharray="2 3" />
+      )}
+
       {[0, 90, 180, 270].map((a, i) => {
         const jitterA = (rand(i) - 0.5) * 14;
         const w = s * (0.68 + rand(i + 1) * 0.18);
         const h = s * (0.92 + rand(i + 2) * 0.22);
         const skew = (rand(i + 3) - 0.5) * 0.15;
-
         const path = `
           M 0 0
           C ${w * 0.55} ${-h * 0.05},
@@ -129,16 +170,9 @@ function Floret({
             0 0
           Z
         `;
-
         return (
           <g key={a} transform={`rotate(${a + jitterA})`}>
-            <path
-              d={path}
-              fill={`url(#${gradId})`}
-              stroke={outer}
-              strokeWidth="0.5"
-              strokeOpacity="0.45"
-            />
+            <path d={path} fill={`url(#${gradId})`} stroke={outer} strokeWidth="0.5" strokeOpacity="0.45" />
             <path d={path} fill={`url(#${tipGradId})`} />
           </g>
         );
@@ -159,13 +193,10 @@ function FallenPetal({
   return (
     <g
       transform={`translate(${x} ${y}) rotate(${rot})`}
-      style={{
-        opacity: 0,
-        animation: `petalSettle 1.6s ease-out ${delay}s forwards`,
-      }}
+      style={{ opacity: 0, animation: `petalSettle 1.6s ease-out ${delay}s forwards` }}
     >
-      <ellipse rx="10" ry="7" fill={inner} opacity="0.85" />
-      <ellipse rx="10" ry="7" fill="none" stroke={outer} strokeWidth="0.5" />
+      <ellipse rx="15" ry="10.5" fill={inner} opacity="0.85" />
+      <ellipse rx="15" ry="10.5" fill="none" stroke={outer} strokeWidth="0.5" />
     </g>
   );
 }
@@ -173,15 +204,32 @@ function FallenPetal({
 // ============================================================
 //  Main App
 // ============================================================
-type Step = "open" | "mood" | "task" | "leaving" | "home";
+type Step = "open" | "awakening" | "tend" | "task" | "leaving" | "home";
+type GrowMode = "grow" | "remove";
 
 export default function App() {
   const [step, setStep] = useState<Step>("open");
-  const [mood, setMood] = useState<Mood | null>(null);
+  const [florets, setFlorets] = useState<Floret[]>(seedBloom);
+  const [mode, setMode] = useState<GrowMode>("grow");
   const [tasks, setTasks] = useState<{ id: number; text: string; done: boolean }[]>([]);
   const [taskInput, setTaskInput] = useState("");
   const [breathPhase, setBreathPhase] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // re-render tick so bloom animations resolve cleanly
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (step !== "tend" && step !== "awakening") return;
+    const id = setInterval(() => force((n) => n + 1), 80);
+    return () => clearInterval(id);
+  }, [step]);
+
+  // after intro bloom, gently move to tend
+  useEffect(() => {
+    if (step !== "awakening") return;
+    const id = setTimeout(() => setStep("tend"), INTRO_BLOOM_MS + INTRO_TO_TEND_MS);
+    return () => clearTimeout(id);
+  }, [step]);
 
   // Breath cycle on "leaving" screen
   useEffect(() => {
@@ -198,10 +246,43 @@ export default function App() {
 
   const activeTasks = tasks.filter((t) => !t.done);
   const fallenTasks = tasks.filter((t) => t.done);
-
-  const skyColor = mood?.sky ?? "#cbcdd2";
-  const accentColor = "#4a78b8";   // signature blue
+  const accentColor = "#4a78b8";
   const accentDeep  = "#2d5288";
+
+  // ----- grow / remove handlers -----
+  const addFloret = () => {
+    setFlorets((fs) => {
+      if (fs.length >= MAX_FLORETS) return fs;
+      return [...fs, makeFloret(fs.length, randomAccentColorIndex())];
+    });
+  };
+
+  const removeFloret = (id: number) => {
+    if (mode !== "remove") return;
+    setFlorets((fs) => {
+      const next = fs.filter((f) => f.id !== id);
+      // re-flow positions so the bloom stays a tight手毬 after removal
+      return next.map((f, i) => {
+        const p = positionForIndex(i);
+        return { ...f, x: p.x, y: p.y, r: p.r, rot: p.rot };
+      });
+    });
+  };
+
+  // tapping empty space in grow mode adds a floret
+  const handleBloomBackgroundTap = () => {
+    if (step === "tend" && mode === "grow") addFloret();
+  };
+
+  const startIntro = () => {
+    const start = Date.now();
+    const bloom = Array.from({ length: INITIAL_FLORET_COUNT }, (_, i) => {
+      const f = makeFloret(i);
+      return { ...f, born: start + (i / INITIAL_FLORET_COUNT) * INTRO_BLOOM_MS };
+    });
+    setFlorets(bloom);
+    setStep("awakening");
+  };
 
   return (
     <div
@@ -209,7 +290,7 @@ export default function App() {
         minHeight: "100vh",
         width: "100%",
         fontFamily: "'Shippori Mincho', 'Noto Serif JP', 'Hiragino Mincho ProN', serif",
-        background: `linear-gradient(180deg, ${skyColor} 0%, #d8dde2 60%, #c8cdd2 100%)`,
+        background: "linear-gradient(180deg, #cbcdd2 0%, #d8dde2 60%, #c8cdd2 100%)",
         transition: "background 2s ease",
         color: "#3a3a3a",
         display: "flex",
@@ -245,6 +326,26 @@ export default function App() {
           70%  { opacity: 0.9; }
           100% { opacity: 0.85; transform: translate(0px, 0px) rotate(0deg) scale(1); }
         }
+        @keyframes floretBloom {
+          0%   { opacity: 0; transform: scale(0.2); }
+          60%  { opacity: 1; transform: scale(1.12); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes floretFloatIn {
+          0%   { opacity: 0; transform: scale(0.12) translateY(18px); }
+          35%  { opacity: 0.55; transform: scale(0.85) translateY(-6px); }
+          65%  { opacity: 0.92; transform: scale(1.1) translateY(3px); }
+          85%  { opacity: 1; transform: scale(0.97) translateY(-2px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes panelReveal {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bloomReveal {
+          from { opacity: 0.85; }
+          to   { opacity: 1; }
+        }
         @keyframes breatheIn {
           0%   { transform: scale(1);    opacity: 0.85; }
           100% { transform: scale(1.06); opacity: 1; }
@@ -255,59 +356,54 @@ export default function App() {
         }
         .fade-up { animation: fadeUp 1.2s ease-out both; }
         .voice-line {
-          font-style: italic;
-          color: #5a5a5a;
-          letter-spacing: 0.05em;
-          font-size: 0.85rem;
-          opacity: 0.75;
-          min-height: 1.2em;
+          font-style: italic; color: #5a5a5a; letter-spacing: 0.05em;
+          font-size: 0.85rem; opacity: 0.75; min-height: 1.2em;
         }
         input:focus {
           border-color: ${accentDeep} !important;
           background: rgba(255,255,255,0.75) !important;
         }
-        button:hover {
-          background: rgba(255,255,255,0.75) !important;
-        }
+        button:hover { background: rgba(255,255,255,0.75) !important; }
       `}</style>
 
       {/* Header */}
       <div className="fade-up" style={{ marginBottom: "0.5rem", textAlign: "center", zIndex: 1 }}>
         <h1 style={{
-          fontSize: "1.5rem",
-          fontWeight: 300,
-          letterSpacing: "0.3em",
-          margin: 0,
-          fontStyle: "italic",
-          color: "#3a3a3a",
+          fontFamily: "'Great Vibes', cursive",
+          fontSize: "2.8rem", fontWeight: 400, letterSpacing: "0.04em",
+          margin: 0, fontStyle: "normal", color: "#3a3a3a",
         }}>
           the water vessel
         </h1>
         <p className="voice-line" style={{ marginTop: "0.4rem" }}>
-          {step === "open"     && "（声：今日もここにあるよ）"}
-          {step === "mood"     && "今日は どんな色？"}
-          {step === "task"     && ""}
-          {step === "leaving"  && "（声：重いまま、いっていいよ）"}
-          {step === "home"     && "（声：よく ここまできたね）"}
+          {step === "open"      && "（声：今日もここにあるよ）"}
+          {step === "awakening" && ""}
+          {step === "tend"      && (mode === "grow" ? "空いたところを そっと 押すと、咲きます" : "花びらを 押すと、ひとつ 手放せます")}
+          {step === "task"    && ""}
+          {step === "leaving" && "（声：重いまま、いっていいよ）"}
+          {step === "home"    && "（声：よく ここまできたね）"}
         </p>
       </div>
 
       {/* The flower */}
       <svg
-        viewBox="-200 -200 400 460"
+        viewBox="-200 -200 400 780"
         width="100%"
+        onClick={handleBloomBackgroundTap}
         style={{
-          maxWidth: 360,
-          height: "auto",
-          zIndex: 1,
+          maxWidth: 360, height: "auto", zIndex: 1,
           transition: "filter 2s ease",
           filter: step === "leaving" ? "brightness(0.78)" : "none",
+          cursor: step === "tend" && mode === "grow" ? "pointer" : "default",
         }}
       >
+        {/* transparent backdrop to catch "grow" taps on empty space */}
+        <rect x="-200" y="-200" width="400" height="780" fill="transparent" />
+
         {/* stem */}
         <path
-          d="M 0 110 Q -3 160 -1 230"
-          stroke="#3a4a2c"
+          d="M 0 110 C -7 240 9 366 -5 470"
+          stroke="#5a6e4a"
           strokeWidth="3.5"
           fill="none"
           strokeLinecap="round"
@@ -317,131 +413,119 @@ export default function App() {
         <g>
           <defs>
             <linearGradient id="leafGradL" x1="0%" y1="0%" x2="100%" y2="50%">
-              <stop offset="0%"   stopColor="#1f3320" />
-              <stop offset="50%"  stopColor="#2f4a30" />
-              <stop offset="100%" stopColor="#3d5e3d" />
+              <stop offset="0%" stopColor="#3d5a3e" /><stop offset="50%" stopColor="#4d6e4e" /><stop offset="100%" stopColor="#5d8260" />
             </linearGradient>
           </defs>
-          <path
-            d="M -2 150
-               Q -28 138 -52 142
-               Q -75 148 -88 168
-               Q -92 182 -80 192
-               Q -62 198 -42 192
-               Q -22 184 -8 170
-               Q -2 162 -2 150 Z"
-            fill="url(#leafGradL)"
-            stroke="#1a2818"
-            strokeWidth="0.6"
-            strokeOpacity="0.5"
-          />
-          <path d="M -2 158 Q -40 168 -82 178" stroke="#1a2818" strokeWidth="0.7" fill="none" opacity="0.6" />
-          <path d="M -18 160 Q -28 168 -34 178" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
-          <path d="M -40 164 Q -50 172 -56 184" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
-          <path d="M -60 170 Q -70 178 -74 188" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
+          <path d="M -2 230 Q -28 194 -52 206 Q -75 204 -88 284 Q -92 326 -80 356 Q -62 374 -42 356 Q -22 332 -8 290 Q -2 266 -2 230 Z"
+            fill="url(#leafGradL)" stroke="#2e442c" strokeWidth="0.6" strokeOpacity="0.45" />
+          <path d="M -2 254 Q -40 284 -82 314" stroke="#2e442c" strokeWidth="0.7" fill="none" opacity="0.5" />
+          <path d="M -18 260 Q -28 284 -34 314" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
+          <path d="M -40 272 Q -50 296 -56 332" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
+          <path d="M -60 290 Q -70 312 -74 346" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
+          {step === "tend" && (
+            <text
+              x="-48"
+              y="290"
+              textAnchor="middle"
+              fill="rgba(255,255,255,0.88)"
+              fontSize="11"
+              fontFamily="'Shippori Mincho', 'Noto Serif JP', serif"
+              letterSpacing="0.08em"
+              style={{ pointerEvents: "none", userSelect: "none" }}
+            >
+              いま{florets.length}輪
+            </text>
+          )}
         </g>
 
         {/* Right leaf */}
         <g>
           <defs>
             <linearGradient id="leafGradR" x1="100%" y1="0%" x2="0%" y2="50%">
-              <stop offset="0%"   stopColor="#1f3320" />
-              <stop offset="50%"  stopColor="#2f4a30" />
-              <stop offset="100%" stopColor="#3d5e3d" />
+              <stop offset="0%" stopColor="#3d5a3e" /><stop offset="50%" stopColor="#4d6e4e" /><stop offset="100%" stopColor="#5d8260" />
             </linearGradient>
           </defs>
-          <path
-            d="M 2 175
-               Q 28 163 52 168
-               Q 75 175 88 195
-               Q 92 209 80 219
-               Q 62 224 42 218
-               Q 22 210 8 195
-               Q 2 187 2 175 Z"
-            fill="url(#leafGradR)"
-            stroke="#1a2818"
-            strokeWidth="0.6"
-            strokeOpacity="0.5"
-          />
-          <path d="M 2 184 Q 40 194 82 204" stroke="#1a2818" strokeWidth="0.7" fill="none" opacity="0.6" />
-          <path d="M 20 186 Q 30 194 36 204" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
-          <path d="M 42 190 Q 52 198 58 210" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
-          <path d="M 62 196 Q 72 204 76 214" stroke="#1a2818" strokeWidth="0.4" fill="none" opacity="0.4" />
+          <path d="M 2 306 Q 28 268 52 284 Q 75 306 88 366 Q 92 408 80 438 Q 62 452 42 434 Q 22 410 8 366 Q 2 342 2 306 Z"
+            fill="url(#leafGradR)" stroke="#2e442c" strokeWidth="0.6" strokeOpacity="0.45" />
+          <path d="M 2 332 Q 40 362 82 392" stroke="#2e442c" strokeWidth="0.7" fill="none" opacity="0.5" />
+          <path d="M 20 338 Q 30 362 36 392" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
+          <path d="M 42 350 Q 52 374 58 410" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
+          <path d="M 62 368 Q 72 392 76 422" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
         </g>
 
-        {/* The bloom — 30 packed florets */}
-        <g
-          style={{
-            transformOrigin: "center",
-            animation: step === "leaving" ? "breatheIn 5s ease-in-out infinite alternate" : undefined,
-          }}
-        >
-          {PETAL_POSITIONS.map((p, i) => {
-            const c = PALETTE[i % PALETTE.length];
-            return (
-              <Floret
-                key={i}
-                cx={p.x}
-                cy={p.y}
-                size={p.r}
-                rot={p.rot}
-                seed={p.seed}
-                inner={c.inner}
-                outer={c.outer}
-                tip={c.tip}
-              />
-            );
-          })}
+        {/* The bloom — dynamic florets */}
+        <g style={{
+          transformOrigin: "center",
+          animation: step === "leaving"
+            ? "breatheIn 5s ease-in-out infinite alternate"
+            : step === "awakening"
+              ? "bloomReveal 1.5s ease-out both"
+              : undefined,
+        }}>
+          {florets.map((f) => (
+            <FloretShape
+              key={f.id}
+              floret={f}
+              mode={mode}
+              onTap={removeFloret}
+              useFloatIn={step === "awakening"}
+            />
+          ))}
         </g>
 
         {/* Fallen petals at the base */}
         {fallenTasks.map((t, i) => {
           const c = PALETTE[i % PALETTE.length];
           const x = -100 + (i % 6) * 34 + (Math.floor(i / 6) % 2) * 17;
-          const y = 245 + Math.floor(i / 6) * 14;
+          const y = 516 + Math.floor(i / 6) * 14;
           const rot = (i * 47) % 360;
-          return (
-            <FallenPetal
-              key={t.id}
-              x={x}
-              y={y}
-              inner={c.inner}
-              outer={c.outer}
-              rot={rot}
-              delay={i * 0.15}
-            />
-          );
+          return <FallenPetal key={t.id} x={x} y={y} inner={c.inner} outer={c.outer} rot={rot} delay={i * 0.15} />;
         })}
       </svg>
 
       {/* Interaction panel */}
       <div style={{ width: "100%", maxWidth: 360, marginTop: "1rem", zIndex: 1 }}>
         {step === "open" && (
-          <button type="button" onClick={() => setStep("mood")} style={btnStyle}>
+          <button type="button" onClick={startIntro} style={btnStyle}>
             ここに いる
           </button>
         )}
 
-        {step === "mood" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
-            {MOODS.map((m) => (
+        {step === "tend" && (
+          <div style={{ animation: "panelReveal 1.5s ease-out both" }}>
+            {/* mode switch — always visible operation panel */}
+            <div style={{
+              display: "flex", gap: "0.5rem", marginBottom: "0.8rem",
+              background: "rgba(255,255,255,0.35)", padding: "0.35rem",
+              borderRadius: "999px",
+            }}>
               <button
-                key={m.id}
                 type="button"
-                onClick={() => {
-                  setMood(m);
-                  setTimeout(() => setStep("task"), 900);
-                }}
+                onClick={() => setMode("grow")}
                 style={{
-                  ...btnStyle,
-                  background: mood?.id === m.id ? accentColor : "rgba(255,255,255,0.55)",
-                  color: mood?.id === m.id ? "#fff" : "#3a3a3a",
-                  borderColor: accentDeep,
+                  ...pillStyle,
+                  background: mode === "grow" ? accentColor : "transparent",
+                  color: mode === "grow" ? "#fff" : "#3a3a3a",
                 }}
               >
-                {m.label}
+                花びらを 増やす
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => setMode("remove")}
+                style={{
+                  ...pillStyle,
+                  background: mode === "remove" ? accentColor : "transparent",
+                  color: mode === "remove" ? "#fff" : "#3a3a3a",
+                }}
+              >
+                花びらを 消す
+              </button>
+            </div>
+
+            <button type="button" onClick={() => setStep("task")} style={{ ...btnStyle, background: accentColor, color: "#fff" }}>
+              この花で、すすむ
+            </button>
           </div>
         )}
 
@@ -461,18 +545,11 @@ export default function App() {
               }}
               placeholder="例：あの返信を書く"
               style={{
-                width: "100%",
-                padding: "0.8rem 1rem",
-                border: `1px solid ${accentDeep}`,
-                borderRadius: "999px",
-                background: "rgba(255,255,255,0.6)",
-                fontFamily: "inherit",
-                fontSize: "1rem",
-                color: "#3a3a3a",
-                outline: "none",
-                marginBottom: "0.8rem",
-                boxSizing: "border-box",
-                transition: "all 0.3s ease",
+                width: "100%", padding: "0.8rem 1rem",
+                border: `1px solid ${accentDeep}`, borderRadius: "999px",
+                background: "rgba(255,255,255,0.6)", fontFamily: "inherit",
+                fontSize: "1rem", color: "#3a3a3a", outline: "none",
+                marginBottom: "0.8rem", boxSizing: "border-box", transition: "all 0.3s ease",
               }}
             />
             <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -480,10 +557,7 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   const trimmed = taskInput.trim();
-                  if (!trimmed) {
-                    inputRef.current?.focus();
-                    return;
-                  }
+                  if (!trimmed) { inputRef.current?.focus(); return; }
                   setTasks((ts) => [...ts, { id: Date.now(), text: trimmed, done: false }]);
                   setTaskInput("");
                 }}
@@ -491,11 +565,7 @@ export default function App() {
               >
                 花びらに する
               </button>
-              <button
-                type="button"
-                onClick={() => setStep("leaving")}
-                style={{ ...btnStyle, flex: 1, background: accentColor, color: "#fff" }}
-              >
+              <button type="button" onClick={() => setStep("leaving")} style={{ ...btnStyle, flex: 1, background: accentColor, color: "#fff" }}>
                 いってきます
               </button>
             </div>
@@ -503,16 +573,11 @@ export default function App() {
             {activeTasks.length > 0 && (
               <ul style={{ marginTop: "1rem", padding: 0, listStyle: "none", fontSize: "0.9rem" }}>
                 {activeTasks.map((t) => (
-                  <li
-                    key={t.id}
-                    style={{
-                      padding: "0.5rem 0.8rem",
-                      marginBottom: "0.3rem",
-                      background: "rgba(255,255,255,0.4)",
-                      borderRadius: "8px",
-                      borderLeft: `3px solid ${accentDeep}`,
-                    }}
-                  >
+                  <li key={t.id} style={{
+                    padding: "0.5rem 0.8rem", marginBottom: "0.3rem",
+                    background: "rgba(255,255,255,0.4)", borderRadius: "8px",
+                    borderLeft: `3px solid ${accentDeep}`,
+                  }}>
                     {t.text}
                   </li>
                 ))}
@@ -523,33 +588,19 @@ export default function App() {
 
         {step === "leaving" && (
           <div className="fade-up" style={{ textAlign: "center" }}>
-            <p style={{
-              fontSize: "1rem",
-              letterSpacing: "0.15em",
-              color: "#4a4a4a",
-              marginBottom: "1.2rem",
-            }}>
+            <p style={{ fontSize: "1rem", letterSpacing: "0.15em", color: "#4a4a4a", marginBottom: "1.2rem" }}>
               {breathPhase === 0 && "ひとつめの 息"}
               {breathPhase === 1 && "ふたつめの 息"}
               {breathPhase === 2 && "みっつめの 息"}
               {breathPhase >= 3 && "いってらっしゃい"}
             </p>
-            <div style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "0.4rem",
-              marginBottom: "1.2rem",
-            }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: "0.4rem", marginBottom: "1.2rem" }}>
               {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  style={{
-                    width: 10, height: 10, borderRadius: "50%",
-                    background: i <= breathPhase - 1 ? accentDeep : "rgba(255,255,255,0.5)",
-                    border: `1px solid ${accentDeep}`,
-                    transition: "background 0.6s ease",
-                  }}
-                />
+                <span key={i} style={{
+                  width: 10, height: 10, borderRadius: "50%",
+                  background: i <= breathPhase - 1 ? accentDeep : "rgba(255,255,255,0.5)",
+                  border: `1px solid ${accentDeep}`, transition: "background 0.6s ease",
+                }} />
               ))}
             </div>
             {breathPhase >= 3 && (
@@ -562,12 +613,7 @@ export default function App() {
 
         {step === "home" && (
           <div className="fade-up">
-            <p style={{
-              textAlign: "center",
-              color: "#4a4a4a",
-              marginBottom: "0.8rem",
-              fontSize: "0.95rem",
-            }}>
+            <p style={{ textAlign: "center", color: "#4a4a4a", marginBottom: "0.8rem", fontSize: "0.95rem" }}>
               終わったことを、そっと 下に置きます
             </p>
             <ul style={{ padding: 0, listStyle: "none", fontSize: "0.9rem" }}>
@@ -579,23 +625,16 @@ export default function App() {
                     setTasks((ts) => ts.map((x) => x.id === t.id ? { ...x, done: true } : x));
                   }}
                   style={{
-                    padding: "0.6rem 0.9rem",
-                    marginBottom: "0.4rem",
+                    padding: "0.6rem 0.9rem", marginBottom: "0.4rem",
                     background: t.done ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.55)",
-                    borderRadius: "8px",
-                    borderLeft: `3px solid ${accentDeep}`,
+                    borderRadius: "8px", borderLeft: `3px solid ${accentDeep}`,
                     color: t.done ? "#999" : "#3a3a3a",
                     textDecoration: t.done ? "line-through" : "none",
-                    cursor: t.done ? "default" : "pointer",
-                    transition: "all 0.6s ease",
+                    cursor: t.done ? "default" : "pointer", transition: "all 0.6s ease",
                   }}
                 >
                   {t.text}
-                  {!t.done && (
-                    <span style={{ float: "right", fontSize: "0.75rem", opacity: 0.6 }}>
-                      タップで置く
-                    </span>
-                  )}
+                  {!t.done && <span style={{ float: "right", fontSize: "0.75rem", opacity: 0.6 }}>タップで置く</span>}
                 </li>
               ))}
             </ul>
@@ -605,7 +644,7 @@ export default function App() {
               </button>
               <button
                 type="button"
-                onClick={() => setStep("open")}
+                onClick={() => { setFlorets(seedBloom()); setStep("open"); }}
                 style={{ ...btnStyle, flex: 1, background: "rgba(255,255,255,0.3)" }}
               >
                 とじる
@@ -615,32 +654,23 @@ export default function App() {
         )}
       </div>
 
-      <p style={{
-        marginTop: "auto",
-        paddingTop: "2rem",
-        fontSize: "0.7rem",
-        opacity: 0.45,
-        letterSpacing: "0.2em",
-        zIndex: 1,
-      }}>
-        witnessing, not advising
-      </p>
     </div>
   );
 }
 
-// ---------- Shared button style ----------
+// ---------- Shared styles ----------
 const btnStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "0.7rem 1.2rem",
-  fontFamily: "inherit",
-  fontSize: "0.95rem",
-  letterSpacing: "0.15em",
-  background: "rgba(255,255,255,0.55)",
-  border: "1px solid #2d5288",
-  borderRadius: "999px",
-  color: "#3a3a3a",
-  cursor: "pointer",
-  transition: "all 0.4s ease",
-  backdropFilter: "blur(4px)",
+  width: "100%", padding: "0.7rem 1.2rem", fontFamily: "inherit",
+  fontSize: "0.95rem", letterSpacing: "0.15em",
+  background: "rgba(255,255,255,0.55)", border: "1px solid #2d5288",
+  borderRadius: "999px", color: "#3a3a3a", cursor: "pointer",
+  transition: "all 0.4s ease", backdropFilter: "blur(4px)",
+};
+
+const pillStyle: React.CSSProperties = {
+  flex: 1, padding: "0.55rem 0.8rem", fontFamily: "inherit",
+  fontSize: "0.9rem", letterSpacing: "0.1em",
+  background: "transparent", border: "none",
+  borderRadius: "999px", color: "#3a3a3a", cursor: "pointer",
+  transition: "all 0.3s ease",
 };
