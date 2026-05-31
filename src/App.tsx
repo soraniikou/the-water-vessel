@@ -393,8 +393,10 @@ export default function App() {
         }
         /* handover caption: lower on desktop, closer to center on mobile */
         .handover-caption { top: calc(50% + 100px); }
+        .handover-back { bottom: 2.5rem; top: auto; }
         @media (max-width: 600px) {
-          .handover-caption { top: calc(50% + 45px); }
+          .handover-caption { top: calc(50% + 18px); }
+          .handover-back { bottom: auto; top: calc(50% + 150px); }
         }
         .fade-up { animation: fadeUp 1.2s ease-out both; }
         .voice-line {
@@ -867,7 +869,7 @@ export default function App() {
             <div style={{
               transition: "transform 0.6s ease",
               transform: handoverTouched ? "scale(1.15)" : "scale(1)",
-              filter: "blur(3px)",
+              filter: "blur(1px)",
             }}>
             <svg viewBox="-50 -50 100 100" width="120" height="120" style={{
               display: "block",
@@ -937,13 +939,14 @@ export default function App() {
           </div>
 
           <button type="button"
+            className="handover-back"
             onClick={() => {
               if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
               setFlorets(seedBloom());
               setStep("open");
             }}
             style={{
-              position: "absolute", bottom: "2.5rem", left: "50%", transform: "translateX(-50%)",
+              position: "absolute", left: "50%", transform: "translateX(-50%)",
               padding: "0.6rem 1.8rem", fontFamily: "inherit",
               fontSize: "0.85rem", letterSpacing: "0.25em",
               background: "transparent", border: "1px solid rgba(45,82,136,0.4)",
