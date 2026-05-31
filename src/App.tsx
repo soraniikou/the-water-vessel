@@ -444,7 +444,7 @@ export default function App() {
               <stop offset="0%" stopColor="#6e8c6f" /><stop offset="50%" stopColor="#84a886" /><stop offset="100%" stopColor="#9ec4a0" />
             </linearGradient>
           </defs>
-          <g transform="translate(-2 230) scale(0.6) translate(2 -230)">
+          <g transform="translate(-2 230) scale(0.6 -0.6) translate(2 -230)">
             <path d="M -2 230 Q -28 194 -52 206 Q -75 204 -88 284 Q -92 326 -80 356 Q -62 374 -42 356 Q -22 332 -8 290 Q -2 266 -2 230 Z"
               fill="url(#leafGradL)" stroke="#5a7a5b" strokeWidth="0.6" strokeOpacity="0.4" />
             <path d="M -2 254 Q -40 284 -82 314" stroke="#5a7a5b" strokeWidth="0.7" fill="none" opacity="0.45" />
@@ -453,7 +453,7 @@ export default function App() {
             <path d="M -60 290 Q -70 312 -74 346" stroke="#5a7a5b" strokeWidth="0.4" fill="none" opacity="0.3" />
           </g>
           {step === "tend" && (
-            <text x="-29" y="278" textAnchor="middle"
+            <text x="-29" y="185" textAnchor="middle"
               fill="rgba(255,255,255,0.9)" fontSize="8"
               fontFamily="'Shippori Mincho', 'Noto Serif JP', serif"
               letterSpacing="0.05em"
@@ -469,7 +469,7 @@ export default function App() {
               <stop offset="0%" stopColor="#6e8c6f" /><stop offset="50%" stopColor="#84a886" /><stop offset="100%" stopColor="#9ec4a0" />
             </linearGradient>
           </defs>
-          <g transform="translate(2 306) scale(0.6) translate(-2 -306)">
+          <g transform="translate(2 306) scale(0.6 -0.6) translate(-2 -306)">
             <path d="M 2 306 Q 28 268 52 284 Q 75 306 88 366 Q 92 408 80 438 Q 62 452 42 434 Q 22 410 8 366 Q 2 342 2 306 Z"
               fill="url(#leafGradR)" stroke="#5a7a5b" strokeWidth="0.6" strokeOpacity="0.4" />
             <path d="M 2 332 Q 40 362 82 392" stroke="#5a7a5b" strokeWidth="0.7" fill="none" opacity="0.45" />
@@ -514,15 +514,15 @@ export default function App() {
               background: "rgba(255,255,255,0.35)", padding: "0.35rem", borderRadius: "999px",
             }}>
               <button type="button" onClick={() => setMode("grow")}
-                style={{ ...pillStyle, background: mode === "grow" ? accentColor : "transparent", color: mode === "grow" ? "#fff" : "#3a3a3a" }}>
+                style={{ ...pillStyle, padding: "0.385rem 0.56rem", fontSize: "0.63rem", letterSpacing: "0.07em", background: mode === "grow" ? accentColor : "transparent", color: mode === "grow" ? "#fff" : "#3a3a3a" }}>
                 花びらを 増やす
               </button>
               <button type="button" onClick={() => setMode("remove")}
-                style={{ ...pillStyle, background: mode === "remove" ? accentColor : "transparent", color: mode === "remove" ? "#fff" : "#3a3a3a" }}>
+                style={{ ...pillStyle, padding: "0.385rem 0.56rem", fontSize: "0.63rem", letterSpacing: "0.07em", background: mode === "remove" ? accentColor : "transparent", color: mode === "remove" ? "#fff" : "#3a3a3a" }}>
                 花びらを 消す
               </button>
             </div>
-            <button type="button" onClick={() => setStep("task")} style={{ ...btnStyle, background: accentColor, color: "#fff" }}>
+            <button type="button" onClick={() => setStep("task")} style={{ ...btnStyle, padding: "0.49rem 0.84rem", fontSize: "0.665rem", letterSpacing: "0.105em", background: accentColor, color: "#fff" }}>
               この花で、すすむ
             </button>
           </div>
