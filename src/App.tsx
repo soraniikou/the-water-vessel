@@ -73,6 +73,7 @@ const INITIAL_FLORET_COUNT = 24;
 const OPEN_FLORET_COUNT = 2;
 const INTRO_BLOOM_MS = 10_000;
 const INTRO_TO_TEND_MS = 1_500;
+const STEM_GROW_MS = 6_000;
 
 // ---------- Blessing scene (pink hydrangea + slow droplet + message) ----------
 const PINK_PALETTE: { inner: string; outer: string }[] = [
@@ -173,7 +174,7 @@ function FallenPetal({
   );
 }
 
-type Step = "open" | "awakening" | "tend" | "task"
+type Step = "open" | "growing" | "awakening" | "tend" | "task"
           | "reflection" | "blessing" | "revealing" | "handover";
 type GrowMode = "grow" | "remove";
 
@@ -203,6 +204,13 @@ export default function App() {
   useEffect(() => {
     if (step !== "awakening") return;
     const id = setTimeout(() => setStep("tend"), INTRO_BLOOM_MS + INTRO_TO_TEND_MS);
+    return () => clearTimeout(id);
+  }, [step]);
+
+  // Growing scene: the stem slowly extends to 2x, then the bloom awakens
+  useEffect(() => {
+    if (step !== "growing") return;
+    const id = setTimeout(() => startIntro(), STEM_GROW_MS);
     return () => clearTimeout(id);
   }, [step]);
 
@@ -361,6 +369,10 @@ export default function App() {
           50%      { filter: drop-shadow(0 0 18px rgba(168,200,232,0.9)); }
         }
         @keyframes pulseHint { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
+        @keyframes stemGrow {
+          from { transform: scaleY(1); }
+          to   { transform: scaleY(2); }
+        }
         /* handover caption: lower on desktop, closer to center on mobile */
         .handover-caption { top: calc(50% + 100px); }
         @media (max-width: 600px) {
@@ -401,7 +413,12 @@ export default function App() {
           cursor: step === "tend" && mode === "grow" ? "pointer" : "default",
         }}>
         <rect x="-200" y="-200" width="400" height="780" fill="transparent" />
-        <path d="M 0 110 C -7 240 9 366 -5 470" stroke="#5a6e4a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+        <g style={{
+          transformBox: "fill-box", transformOrigin: "center top",
+          animation: step === "growing" ? `stemGrow ${STEM_GROW_MS}ms ease-in-out forwards` : undefined,
+        }}>
+          <path d="M 0 110 C -7 240 9 366 -5 470" stroke="#5a6e4a" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+        </g>
 
         <g>
           <defs>
@@ -460,8 +477,8 @@ export default function App() {
 
       <div style={{ width: "100%", maxWidth: 360, marginTop: "1rem", zIndex: 1 }}>
         {step === "open" && (
-          <button type="button" onClick={startIntro} style={btnStyle}>
-            ここに いる
+          <button type="button" onClick={() => setStep("growing")} style={btnStyle}>
+            tap
           </button>
         )}
 
