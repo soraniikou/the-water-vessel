@@ -923,7 +923,7 @@ export default function App() {
                 animation: "pulseHint 3s ease-in-out infinite",
                 fontStyle: "italic",
               }}>
-                そっと 触れてみて
+                はなびらに 触れてみて
               </p>
             )}
             {handoverTouched && (
