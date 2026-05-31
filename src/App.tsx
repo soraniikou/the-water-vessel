@@ -82,9 +82,11 @@ const PINK_PALETTE: { inner: string; outer: string }[] = [
   { inner: "#f4c8da", outer: "#dca0bc" },
   { inner: "#e6b0c8", outer: "#c885a4" },
 ];
-const BLESSING_MESSAGE = "あなたは美しい　価値ある人";
+const BLESSING_MESSAGE = "あなたは美しい";
 const BLESSING_DROP_MS = 10_000;
 const BLESSING_TYPE_MS = 380;
+const HANDOVER_MESSAGE = "あなたは愛されていい";
+const HANDOVER_TYPE_MS = 380;
 
 function seedBloom(): Floret[] {
   const born = Date.now() - 60_000;
@@ -185,11 +187,11 @@ export default function App() {
 
   const offeringDir = 0;
   const [handoverTouched, setHandoverTouched] = useState(false);
-  const [audioPlayed, setAudioPlayed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [dropletLanded, setDropletLanded] = useState(false);
   const [blessingTyped, setBlessingTyped] = useState(0);
+  const [handoverTyped, setHandoverTyped] = useState(0);
 
   const [, force] = useState(0);
   useEffect(() => {
@@ -223,9 +225,17 @@ export default function App() {
   useEffect(() => {
     if (step === "handover") {
       setHandoverTouched(false);
-      setAudioPlayed(false);
+      setHandoverTyped(0);
     }
   }, [step]);
+
+  // Handover scene: type the final message once the petal is touched
+  useEffect(() => {
+    if (step !== "handover" || !handoverTouched) return;
+    if (handoverTyped >= HANDOVER_MESSAGE.length) return;
+    const id = setTimeout(() => setHandoverTyped((n) => n + 1), HANDOVER_TYPE_MS);
+    return () => clearTimeout(id);
+  }, [step, handoverTouched, handoverTyped]);
 
   const activeTasks = tasks.filter((t) => !t.done);
   const fallenTasks = tasks.filter((t) => t.done);
@@ -767,7 +777,7 @@ export default function App() {
               borderRadius: "999px", color: "#c8d8e8", cursor: "pointer",
               opacity: 0, animation: "whisperIn 1.6s ease-out 9s forwards",
             }}>
-            そして
+            next
           </button>
         </div>
       )}
@@ -792,7 +802,7 @@ export default function App() {
               const audio = new Audio("/audio/handover.mp3");
               audio.volume = 0.85;
               audioRef.current = audio;
-              audio.play().then(() => setAudioPlayed(true)).catch(() => setAudioPlayed(false));
+              audio.play().catch(() => {});
             }}>
             <svg viewBox="-50 -50 100 100" width="120" height="120" style={{
               display: "block",
@@ -802,24 +812,24 @@ export default function App() {
             }}>
               <defs>
                 <radialGradient id="handoverGrad" cx="50%" cy="80%" r="90%">
-                  <stop offset="0%"  stopColor="#2d5288" />
-                  <stop offset="45%" stopColor="#4a78b8" />
-                  <stop offset="100%" stopColor="#dcecf4" />
+                  <stop offset="0%"  stopColor="#b5497e" />
+                  <stop offset="45%" stopColor="#e08ab0" />
+                  <stop offset="100%" stopColor="#fbe6f0" />
                 </radialGradient>
                 <radialGradient id="handoverHighlight" cx="50%" cy="25%" r="55%">
                   <stop offset="0%"  stopColor="#ffffff" stopOpacity="0.7" />
-                  <stop offset="100%" stopColor="#dcecf4" stopOpacity="0" />
+                  <stop offset="100%" stopColor="#fbe6f0" stopOpacity="0" />
                 </radialGradient>
               </defs>
               {[0, 90, 180, 270].map((a) => (
                 <g key={a} transform={`rotate(${a})`}>
                   <path d="M 0 0 C 22 -2, 22 -28, 0 -40 C -22 -28, -22 -2, 0 0 Z"
-                    fill="url(#handoverGrad)" stroke="#2d5288" strokeWidth="0.6" strokeOpacity="0.5" />
+                    fill="url(#handoverGrad)" stroke="#c06e92" strokeWidth="0.6" strokeOpacity="0.5" />
                   <path d="M 0 0 C 22 -2, 22 -28, 0 -40 C -22 -28, -22 -2, 0 0 Z"
                     fill="url(#handoverHighlight)" />
                 </g>
               ))}
-              <circle r="4" fill="#2d5288" opacity="0.85" />
+              <circle r="4" fill="#b5497e" opacity="0.85" />
               <circle r="1.5" fill="#fff8d8" opacity="0.7" />
             </svg>
           </div>
@@ -850,13 +860,12 @@ export default function App() {
             )}
             {handoverTouched && (
               <p style={{
-                marginTop: "1.5rem", fontSize: "0.78rem",
-                letterSpacing: "0.22em", color: "#4a5e7a",
-                opacity: 0,
-                animation: "whisperIn 1.4s ease-out 0.3s forwards",
+                marginTop: "1.5rem", minHeight: "1.8em",
+                fontSize: "1.1rem", letterSpacing: "0.22em", color: "#a64d7a",
                 fontStyle: "italic",
               }}>
-                {audioPlayed ? "（声が ここに）" : "受け取ったね"}
+                {HANDOVER_MESSAGE.slice(0, handoverTyped)}
+                {handoverTyped < HANDOVER_MESSAGE.length && <span style={{ opacity: 0.4 }}>｜</span>}
               </p>
             )}
           </div>
