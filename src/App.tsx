@@ -160,7 +160,7 @@ function FallenPetal({
 }
 
 type Step = "open" | "awakening" | "tend" | "task"
-          | "reflection" | "offering" | "revealing" | "handover";
+          | "reflection" | "revealing" | "handover";
 type GrowMode = "grow" | "remove";
 
 export default function App() {
@@ -171,7 +171,7 @@ export default function App() {
   const [taskInput, setTaskInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [offeringDir, setOfferingDir] = useState<number>(0);
+  const offeringDir = 0;
   const [handoverTouched, setHandoverTouched] = useState(false);
   const [audioPlayed, setAudioPlayed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -552,107 +552,16 @@ export default function App() {
             映った姿も、本物
           </p>
 
-          <button type="button" onClick={() => setStep("offering")}
+          <button type="button" onClick={() => setStep("revealing")}
             style={{
-              position: "absolute", bottom: "2.5rem", left: "50%", transform: "translateX(-50%)",
-              padding: "0.6rem 1.8rem", fontFamily: "inherit",
+              position: "absolute", bottom: "2.5rem", right: "1.5rem",
+              padding: "0.6rem 1.4rem", fontFamily: "inherit",
               fontSize: "0.85rem", letterSpacing: "0.25em",
               background: "transparent", border: "1px solid rgba(45,82,136,0.4)",
               borderRadius: "999px", color: "#2a3a52", cursor: "pointer",
               opacity: 0, animation: "whisperIn 1.4s ease-out 4s forwards",
             }}>
-            ↓
-          </button>
-        </div>
-      )}
-
-      {step === "offering" && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 10,
-          background: "linear-gradient(180deg, #c8cdd2 0%, #b8c2cf 100%)",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          padding: "1.5rem", animation: "fadeUp 1.2s ease-out both",
-        }}>
-          <p style={{
-            position: "absolute", top: "3rem", left: "50%", transform: "translateX(-50%)",
-            width: "100%", textAlign: "center",
-            fontSize: "0.95rem", letterSpacing: "0.2em", color: "#3a4a62",
-            fontStyle: "italic", opacity: 0,
-            animation: "whisperIn 1.8s ease-out 0.3s forwards",
-          }}>
-            この花を、どちらへ
-          </p>
-
-          <div style={{
-            transform: `rotate(${offeringDir * 22}deg)`,
-            transformOrigin: "50% 90%",
-            transition: "transform 1.2s cubic-bezier(0.4, 0, 0.4, 1)",
-            width: "100%", maxWidth: 280,
-          }}>
-            <svg viewBox="-120 -180 240 360" width="100%" style={{ display: "block" }}>
-              <path d="M 0 100 Q 6 130 -2 170" stroke="#3a4a2c" strokeWidth="3" fill="none" strokeLinecap="round" />
-              <g>
-                {florets.slice(0, Math.min(florets.length, 28)).map((f, i) => {
-                  const c = PALETTE[f.colorIndex];
-                  const sx = f.x * 0.7;
-                  const sy = f.y * 0.7;
-                  return (
-                    <g key={f.id} transform={`translate(${sx} ${sy})`}>
-                      {[0, 90, 180, 270].map((a) => (
-                        <path key={a} d="M 0 0 C 10 -1, 10 -15, 0 -20 C -10 -15, -10 -1, 0 0 Z"
-                          transform={`rotate(${a + i * 3})`} fill={c.inner} stroke={c.outer} strokeWidth="0.5" />
-                      ))}
-                      <circle r="1.6" fill={c.outer} opacity="0.75" />
-                    </g>
-                  );
-                })}
-              </g>
-            </svg>
-          </div>
-
-          <p style={{
-            marginTop: "1rem", fontSize: "0.95rem", letterSpacing: "0.25em",
-            color: "#2a3a52", fontStyle: "italic", textAlign: "center", minHeight: "1.5em",
-            transition: "opacity 0.6s ease",
-          }}>
-            {offeringDir < 0 && "届かなくても いい"}
-            {offeringDir === 0 && "ただ、咲かせた"}
-            {offeringDir > 0 && "届けても いい"}
-          </p>
-
-          <div style={{
-            display: "flex", gap: "0.6rem", marginTop: "1.5rem",
-            opacity: 0, animation: "whisperIn 1.4s ease-out 1.5s forwards",
-          }}>
-            {[
-              { val: -1, label: "← ひだり" },
-              { val:  0, label: "まんなか" },
-              { val:  1, label: "みぎ →" },
-            ].map((d) => (
-              <button key={d.val} type="button" onClick={() => setOfferingDir(d.val)}
-                style={{
-                  padding: "0.5rem 1rem", fontFamily: "inherit",
-                  fontSize: "0.8rem", letterSpacing: "0.15em",
-                  background: offeringDir === d.val ? "#4a78b8" : "rgba(255,255,255,0.5)",
-                  color: offeringDir === d.val ? "#fff" : "#3a3a3a",
-                  border: "1px solid #2d5288", borderRadius: "999px",
-                  cursor: "pointer", transition: "all 0.3s ease",
-                }}>
-                {d.label}
-              </button>
-            ))}
-          </div>
-
-          <button type="button" onClick={() => setStep("revealing")}
-            style={{
-              position: "absolute", bottom: "2.5rem", left: "50%", transform: "translateX(-50%)",
-              padding: "0.6rem 1.8rem", fontFamily: "inherit",
-              fontSize: "0.85rem", letterSpacing: "0.25em",
-              background: "transparent", border: "1px solid rgba(45,82,136,0.4)",
-              borderRadius: "999px", color: "#2a3a52", cursor: "pointer",
-              opacity: 0, animation: "whisperIn 1.4s ease-out 2.2s forwards",
-            }}>
-            この向きで
+            →
           </button>
         </div>
       )}
