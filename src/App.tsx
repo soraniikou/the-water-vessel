@@ -330,6 +330,11 @@ export default function App() {
           50%      { filter: drop-shadow(0 0 18px rgba(168,200,232,0.9)); }
         }
         @keyframes pulseHint { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
+        /* handover caption: lower on desktop, closer to center on mobile */
+        .handover-caption { top: calc(50% + 100px); }
+        @media (max-width: 600px) {
+          .handover-caption { top: calc(50% + 45px); }
+        }
         .fade-up { animation: fadeUp 1.2s ease-out both; }
         .voice-line {
           font-style: italic; color: #5a5a5a; letter-spacing: 0.05em;
@@ -893,9 +898,9 @@ export default function App() {
             </svg>
           </div>
 
-          <div style={{
+          <div className="handover-caption" style={{
             position: "absolute",
-            top: "calc(50% + 100px)", left: "50%", transform: "translateX(-50%)",
+            left: "50%", transform: "translateX(-50%)",
             textAlign: "center",
             opacity: 0, animation: "whisperIn 2s ease-out 4.2s forwards",
             pointerEvents: "none", width: "100%", maxWidth: 360,
@@ -944,7 +949,7 @@ export default function App() {
               borderRadius: "999px", color: "#2a3a52", cursor: "pointer",
               opacity: 0, animation: "whisperIn 1.6s ease-out 5.5s forwards",
             }}>
-            おわり
+            back
           </button>
         </div>
       )}
