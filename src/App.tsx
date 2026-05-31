@@ -21,6 +21,23 @@ const PALETTE: { inner: string; outer: string; tip: string }[] = [
   { inner: "#7898c4", outer: "#4870a0", tip: "#ccdcec" },
 ];
 
+// ---------- Accent palette for florets added one at a time ----------
+// 紫 / 淡いピンク / 白 / 紺 / 薄い水色
+const ACCENT_PALETTE: { inner: string; outer: string; tip: string }[] = [
+  { inner: "#9b7fc4", outer: "#6e52a0", tip: "#d4c4e8" }, // 紫
+  { inner: "#e6acc4", outer: "#c97f9e", tip: "#f6e0ec" }, // 淡いピンク
+  { inner: "#eef0f6", outer: "#c4c8d4", tip: "#ffffff" }, // 白
+  { inner: "#39497c", outer: "#222e52", tip: "#8a9ac2" }, // 紺
+  { inner: "#aad2ea", outer: "#79aed2", tip: "#ddf1f9" }, // 薄い水色
+];
+
+const PALETTE_BASE_LEN = PALETTE.length;
+PALETTE.push(...ACCENT_PALETTE);
+
+function randomAccentColorIndex(): number {
+  return PALETTE_BASE_LEN + Math.floor(Math.random() * ACCENT_PALETTE.length);
+}
+
 // ---------- A single floret's data ----------
 type Floret = {
   id: number;
@@ -52,7 +69,7 @@ function positionForIndex(i: number): { x: number; y: number; r: number; rot: nu
 }
 
 let floretCounter = 0;
-function makeFloret(index: number): Floret {
+function makeFloret(index: number, colorIndex?: number): Floret {
   const p = positionForIndex(index);
   return {
     id: floretCounter++,
@@ -61,7 +78,7 @@ function makeFloret(index: number): Floret {
     r: p.r,
     rot: p.rot,
     seed: index + 1,
-    colorIndex: index % PALETTE.length,
+    colorIndex: colorIndex ?? index % PALETTE_BASE_LEN,
     born: Date.now(),
   };
 }
@@ -236,7 +253,7 @@ export default function App() {
   const addFloret = () => {
     setFlorets((fs) => {
       if (fs.length >= MAX_FLORETS) return fs;
-      return [...fs, makeFloret(fs.length)];
+      return [...fs, makeFloret(fs.length, randomAccentColorIndex())];
     });
   };
 
