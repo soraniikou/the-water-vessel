@@ -91,7 +91,10 @@ const HANDOVER_TYPE_MS = 380;
 
 function seedBloom(): Floret[] {
   const born = Date.now() - 60_000;
-  return Array.from({ length: OPEN_FLORET_COUNT }, (_, i) => ({ ...makeFloret(i), born }));
+  return Array.from({ length: OPEN_FLORET_COUNT }, (_, i) => {
+    const f = makeFloret(i);
+    return { ...f, r: f.r * 3, born };
+  });
 }
 
 function FloretShape({
@@ -438,20 +441,22 @@ export default function App() {
         <g>
           <defs>
             <linearGradient id="leafGradL" x1="0%" y1="0%" x2="100%" y2="50%">
-              <stop offset="0%" stopColor="#3d5a3e" /><stop offset="50%" stopColor="#4d6e4e" /><stop offset="100%" stopColor="#5d8260" />
+              <stop offset="0%" stopColor="#6e8c6f" /><stop offset="50%" stopColor="#84a886" /><stop offset="100%" stopColor="#9ec4a0" />
             </linearGradient>
           </defs>
-          <path d="M -2 230 Q -28 194 -52 206 Q -75 204 -88 284 Q -92 326 -80 356 Q -62 374 -42 356 Q -22 332 -8 290 Q -2 266 -2 230 Z"
-            fill="url(#leafGradL)" stroke="#2e442c" strokeWidth="0.6" strokeOpacity="0.45" />
-          <path d="M -2 254 Q -40 284 -82 314" stroke="#2e442c" strokeWidth="0.7" fill="none" opacity="0.5" />
-          <path d="M -18 260 Q -28 284 -34 314" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
-          <path d="M -40 272 Q -50 296 -56 332" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
-          <path d="M -60 290 Q -70 312 -74 346" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
+          <g transform="translate(-2 230) scale(0.6) translate(2 -230)">
+            <path d="M -2 230 Q -28 194 -52 206 Q -75 204 -88 284 Q -92 326 -80 356 Q -62 374 -42 356 Q -22 332 -8 290 Q -2 266 -2 230 Z"
+              fill="url(#leafGradL)" stroke="#5a7a5b" strokeWidth="0.6" strokeOpacity="0.4" />
+            <path d="M -2 254 Q -40 284 -82 314" stroke="#5a7a5b" strokeWidth="0.7" fill="none" opacity="0.45" />
+            <path d="M -18 260 Q -28 284 -34 314" stroke="#5a7a5b" strokeWidth="0.4" fill="none" opacity="0.3" />
+            <path d="M -40 272 Q -50 296 -56 332" stroke="#5a7a5b" strokeWidth="0.4" fill="none" opacity="0.3" />
+            <path d="M -60 290 Q -70 312 -74 346" stroke="#5a7a5b" strokeWidth="0.4" fill="none" opacity="0.3" />
+          </g>
           {step === "tend" && (
-            <text x="-48" y="290" textAnchor="middle"
-              fill="rgba(255,255,255,0.88)" fontSize="11"
+            <text x="-29" y="278" textAnchor="middle"
+              fill="rgba(255,255,255,0.9)" fontSize="8"
               fontFamily="'Shippori Mincho', 'Noto Serif JP', serif"
-              letterSpacing="0.08em"
+              letterSpacing="0.05em"
               style={{ pointerEvents: "none", userSelect: "none" }}>
               いま{florets.length}輪
             </text>
@@ -461,15 +466,17 @@ export default function App() {
         <g>
           <defs>
             <linearGradient id="leafGradR" x1="100%" y1="0%" x2="0%" y2="50%">
-              <stop offset="0%" stopColor="#3d5a3e" /><stop offset="50%" stopColor="#4d6e4e" /><stop offset="100%" stopColor="#5d8260" />
+              <stop offset="0%" stopColor="#6e8c6f" /><stop offset="50%" stopColor="#84a886" /><stop offset="100%" stopColor="#9ec4a0" />
             </linearGradient>
           </defs>
-          <path d="M 2 306 Q 28 268 52 284 Q 75 306 88 366 Q 92 408 80 438 Q 62 452 42 434 Q 22 410 8 366 Q 2 342 2 306 Z"
-            fill="url(#leafGradR)" stroke="#2e442c" strokeWidth="0.6" strokeOpacity="0.45" />
-          <path d="M 2 332 Q 40 362 82 392" stroke="#2e442c" strokeWidth="0.7" fill="none" opacity="0.5" />
-          <path d="M 20 338 Q 30 362 36 392" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
-          <path d="M 42 350 Q 52 374 58 410" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
-          <path d="M 62 368 Q 72 392 76 422" stroke="#2e442c" strokeWidth="0.4" fill="none" opacity="0.35" />
+          <g transform="translate(2 306) scale(0.6) translate(-2 -306)">
+            <path d="M 2 306 Q 28 268 52 284 Q 75 306 88 366 Q 92 408 80 438 Q 62 452 42 434 Q 22 410 8 366 Q 2 342 2 306 Z"
+              fill="url(#leafGradR)" stroke="#5a7a5b" strokeWidth="0.6" strokeOpacity="0.4" />
+            <path d="M 2 332 Q 40 362 82 392" stroke="#5a7a5b" strokeWidth="0.7" fill="none" opacity="0.45" />
+            <path d="M 20 338 Q 30 362 36 392" stroke="#5a7a5b" strokeWidth="0.4" fill="none" opacity="0.3" />
+            <path d="M 42 350 Q 52 374 58 410" stroke="#5a7a5b" strokeWidth="0.4" fill="none" opacity="0.3" />
+            <path d="M 62 368 Q 72 392 76 422" stroke="#5a7a5b" strokeWidth="0.4" fill="none" opacity="0.3" />
+          </g>
         </g>
 
         <g style={{
@@ -490,7 +497,10 @@ export default function App() {
         })}
       </svg>
 
-      <div style={{ width: "100%", maxWidth: 360, marginTop: "1rem", zIndex: 1 }}>
+      <div style={{
+        position: "fixed", bottom: "1.2rem", left: "50%", transform: "translateX(-50%)",
+        width: "100%", maxWidth: 360, padding: "0 1rem", boxSizing: "border-box", zIndex: 5,
+      }}>
         {step === "open" && (
           <button type="button" onClick={() => setStep("growing")} style={btnStyle}>
             tap
@@ -779,25 +789,18 @@ export default function App() {
 
           <div style={{ position: "relative", zIndex: 2, textAlign: "center", maxWidth: 360 }}>
             <p style={{
-              fontSize: "1.05rem", letterSpacing: "0.2em",
+              fontSize: "1.1rem", letterSpacing: "0.2em",
               color: "#e0e8f0", fontStyle: "italic", lineHeight: 2,
               opacity: 0, animation: "whisperIn 3s ease-out 1.5s forwards",
             }}>
-              手放したものは
+              諦めてもいいし
             </p>
             <p style={{
-              fontSize: "1.05rem", letterSpacing: "0.2em",
-              color: "#e0e8f0", fontStyle: "italic", lineHeight: 2,
+              fontSize: "1.1rem", letterSpacing: "0.22em",
+              color: "#c8d8e8", fontStyle: "italic", lineHeight: 2, marginTop: "0.5rem",
               opacity: 0, animation: "whisperIn 3s ease-out 4s forwards",
             }}>
-              消えたのではなく
-            </p>
-            <p style={{
-              fontSize: "1.15rem", letterSpacing: "0.22em",
-              color: "#c8d8e8", fontStyle: "italic", lineHeight: 2, marginTop: "0.5rem",
-              opacity: 0, animation: "whisperIn 3s ease-out 6.5s forwards",
-            }}>
-              向こう側に　届いていた
+              諦めなければ続くよ
             </p>
           </div>
 
@@ -818,8 +821,7 @@ export default function App() {
       {step === "handover" && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 10,
-          background: "linear-gradient(180deg, rgba(200,205,210,0.85) 0%, rgba(180,190,205,0.95) 60%, rgba(160,175,195,0.98) 100%)",
-          backdropFilter: "blur(8px)",
+          background: "linear-gradient(180deg, #c8cdd2 0%, #b4becd 60%, #a0afc3 100%)",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           padding: "2rem 1.5rem", animation: "fadeUp 1.4s ease-out both",
         }}>
@@ -864,6 +866,7 @@ export default function App() {
             <div style={{
               transition: "transform 0.6s ease",
               transform: handoverTouched ? "scale(1.15)" : "scale(1)",
+              filter: "blur(3px)",
             }}>
             <svg viewBox="-50 -50 100 100" width="120" height="120" style={{
               display: "block",
