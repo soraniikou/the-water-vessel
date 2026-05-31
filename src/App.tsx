@@ -159,7 +159,7 @@ function FallenPetal({
   );
 }
 
-type Step = "open" | "awakening" | "tend" | "task" | "leaving" | "home"
+type Step = "open" | "awakening" | "tend" | "task"
           | "reflection" | "offering" | "revealing" | "handover";
 type GrowMode = "grow" | "remove";
 
@@ -169,7 +169,6 @@ export default function App() {
   const [mode, setMode] = useState<GrowMode>("grow");
   const [tasks, setTasks] = useState<{ id: number; text: string; done: boolean }[]>([]);
   const [taskInput, setTaskInput] = useState("");
-  const [shizukuDropped, setShizukuDropped] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [offeringDir, setOfferingDir] = useState<number>(0);
@@ -187,14 +186,6 @@ export default function App() {
   useEffect(() => {
     if (step !== "awakening") return;
     const id = setTimeout(() => setStep("tend"), INTRO_BLOOM_MS + INTRO_TO_TEND_MS);
-    return () => clearTimeout(id);
-  }, [step]);
-
-  // Shizuku scene
-  useEffect(() => {
-    if (step !== "leaving") return;
-    setShizukuDropped(false);
-    const id = setTimeout(() => setShizukuDropped(true), 3200);
     return () => clearTimeout(id);
   }, [step]);
 
@@ -292,13 +283,6 @@ export default function App() {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes shizukuFall {
-          0%   { opacity: 0; transform: translateY(-6px) scale(0.4); }
-          15%  { opacity: 1; transform: translateY(-2px) scale(1); }
-          70%  { opacity: 1; transform: translateY(360px) scale(1); }
-          85%  { opacity: 0.9; transform: translateY(395px) scale(1.4, 0.7); }
-          100% { opacity: 0; transform: translateY(410px) scale(1.8, 0.2); }
-        }
         @keyframes whisperIn {
           0%   { opacity: 0; transform: translateY(6px); letter-spacing: 0.5em; }
           100% { opacity: 1; transform: translateY(0);  letter-spacing: 0.22em; }
@@ -360,8 +344,6 @@ export default function App() {
           {step === "awakening" && ""}
           {step === "tend"      && (mode === "grow" ? "空いたところを そっと 押すと、咲きます" : "花びらを 押すと、ひとつ 手放せます")}
           {step === "task"     && ""}
-          {step === "leaving"  && ""}
-          {step === "home"     && "（声：よく ここまできたね）"}
         </p>
       </div>
 
@@ -369,7 +351,6 @@ export default function App() {
         style={{
           maxWidth: 360, height: "auto", zIndex: 1,
           transition: "filter 2s ease",
-          filter: step === "leaving" ? "brightness(0.78)" : "none",
           cursor: step === "tend" && mode === "grow" ? "pointer" : "default",
         }}>
         <rect x="-200" y="-200" width="400" height="780" fill="transparent" />
@@ -414,30 +395,12 @@ export default function App() {
 
         <g style={{
           transformOrigin: "center",
-          animation: step === "leaving" ? "breatheIn 5s ease-in-out infinite alternate"
-            : step === "awakening" ? "bloomReveal 1.5s ease-out both" : undefined,
+          animation: step === "awakening" ? "bloomReveal 1.5s ease-out both" : undefined,
         }}>
           {florets.map((f) => (
             <FloretShape key={f.id} floret={f} mode={mode} onTap={removeFloret} useFloatIn={step === "awakening"} />
           ))}
         </g>
-
-        {step === "leaving" && (
-          <g>
-            <defs>
-              <radialGradient id="shizukuGrad" cx="50%" cy="35%" r="60%">
-                <stop offset="0%"  stopColor="#ffffff" stopOpacity="0.95" />
-                <stop offset="50%" stopColor="#cfe2f0" stopOpacity="0.9" />
-                <stop offset="100%" stopColor="#7ca4cc" stopOpacity="0.7" />
-              </radialGradient>
-            </defs>
-            <g style={{ animation: "shizukuFall 3s ease-in 0.4s both", transformOrigin: "0 110px" }}>
-              <path d="M 0 100 Q -7 108 -7 116 Q -7 126 0 126 Q 7 126 7 116 Q 7 108 0 100 Z"
-                fill="url(#shizukuGrad)" stroke="#a8c8e8" strokeWidth="0.4" strokeOpacity="0.5" />
-              <ellipse cx="-2.5" cy="112" rx="1.6" ry="2.4" fill="#ffffff" opacity="0.85" />
-            </g>
-          </g>
-        )}
 
         {fallenTasks.map((t, i) => {
           const c = PALETTE[i % PALETTE.length];
@@ -495,21 +458,9 @@ export default function App() {
                 fontSize: "1rem", color: "#3a3a3a", outline: "none",
                 marginBottom: "0.8rem", boxSizing: "border-box", transition: "all 0.3s ease",
               }} />
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button type="button"
-                onClick={() => {
-                  const trimmed = taskInput.trim();
-                  if (!trimmed) { inputRef.current?.focus(); return; }
-                  setTasks((ts) => [...ts, { id: Date.now(), text: trimmed, done: false }]);
-                  setTaskInput("");
-                }}
-                style={{ ...btnStyle, flex: 1 }}>
-                花びらに する
-              </button>
-              <button type="button" onClick={() => setStep("leaving")} style={{ ...btnStyle, flex: 1, background: accentColor, color: "#fff" }}>
-                いってきます
-              </button>
-            </div>
+            <button type="button" onClick={() => setStep("reflection")} style={{ ...btnStyle, background: accentColor, color: "#fff" }}>
+              いってきます
+            </button>
             {activeTasks.length > 0 && (
               <ul style={{ marginTop: "1rem", padding: 0, listStyle: "none", fontSize: "0.9rem" }}>
                 {activeTasks.map((t) => (
@@ -526,63 +477,6 @@ export default function App() {
           </div>
         )}
 
-        {/* === Shizuku scene (replaces breath) === */}
-        {step === "leaving" && (
-          <div className="fade-up" style={{ textAlign: "center" }}>
-            {!shizukuDropped && (
-              <p style={{
-                fontSize: "0.9rem", letterSpacing: "0.22em", color: "#4a5e7a",
-                fontStyle: "italic", opacity: 0.7,
-                animation: "whisperIn 2.2s ease-out 0.8s both",
-              }}>
-                花が ひとしずく、代わりに
-              </p>
-            )}
-            {shizukuDropped && (
-              <button type="button" onClick={() => setStep("home")}
-                style={{ ...btnStyle, animation: "fadeUp 1.2s ease-out both" }}>
-                ただいま
-              </button>
-            )}
-          </div>
-        )}
-
-        {step === "home" && (
-          <div className="fade-up">
-            <p style={{ textAlign: "center", color: "#4a4a4a", marginBottom: "0.8rem", fontSize: "0.95rem" }}>
-              終わったことを、そっと 下に置きます
-            </p>
-            <ul style={{ padding: 0, listStyle: "none", fontSize: "0.9rem" }}>
-              {tasks.map((t) => (
-                <li key={t.id}
-                  onClick={() => {
-                    if (t.done) return;
-                    setTasks((ts) => ts.map((x) => x.id === t.id ? { ...x, done: true } : x));
-                  }}
-                  style={{
-                    padding: "0.6rem 0.9rem", marginBottom: "0.4rem",
-                    background: t.done ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.55)",
-                    borderRadius: "8px", borderLeft: `3px solid ${accentDeep}`,
-                    color: t.done ? "#999" : "#3a3a3a",
-                    textDecoration: t.done ? "line-through" : "none",
-                    cursor: t.done ? "default" : "pointer", transition: "all 0.6s ease",
-                  }}>
-                  {t.text}
-                  {!t.done && <span style={{ float: "right", fontSize: "0.75rem", opacity: 0.6 }}>タップで置く</span>}
-                </li>
-              ))}
-            </ul>
-            <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
-              <button type="button" onClick={() => setStep("task")} style={{ ...btnStyle, flex: 1 }}>
-                もうひとつ 置く
-              </button>
-              <button type="button" onClick={() => setStep("reflection")}
-                style={{ ...btnStyle, flex: 1, background: "rgba(255,255,255,0.3)" }}>
-                とじる
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* === Closing arc: reflection → offering → revealing → handover === */}
@@ -645,7 +539,7 @@ export default function App() {
               <div style={{
                 position: "absolute", top: "10%", left: "50%", width: "60px", height: "12px",
                 border: "1px solid rgba(255,255,255,0.6)", borderRadius: "50%",
-                animation: "ripple 3.5s ease-out 1.5s infinite", pointerEvents: "none",
+                animation: "ripple 10.5s ease-out 1.5s infinite", pointerEvents: "none",
               }} />
             </div>
           </div>
@@ -667,7 +561,7 @@ export default function App() {
               borderRadius: "999px", color: "#2a3a52", cursor: "pointer",
               opacity: 0, animation: "whisperIn 1.4s ease-out 4s forwards",
             }}>
-            すすむ
+            ↓
           </button>
         </div>
       )}
