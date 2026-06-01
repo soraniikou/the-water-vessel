@@ -5,29 +5,29 @@ import { useState, useEffect, useRef } from "react";
 //  A hydrangea you grow with your own hands.
 // ============================================================
 
-// ---------- Natural hydrangea palette (wisteria · pale pink · white · soft violet) ----------
+// ---------- Blue hydrangea palette (main bloom: open · growing · tend) ----------
 const PALETTE: { inner: string; outer: string; tip: string }[] = [
-  { inner: "#b8a8d4", outer: "#9484b8", tip: "#f4eef6" },
-  { inner: "#c8b4dc", outer: "#a898c4", tip: "#faf6fc" },
-  { inner: "#e4c4d8", outer: "#c4a4bc", tip: "#fff8fc" },
-  { inner: "#dcc8e8", outer: "#b8a0cc", tip: "#f8f2fa" },
-  { inner: "#f0e6f2", outer: "#d4c4dc", tip: "#ffffff" },
-  { inner: "#d4b8d0", outer: "#b498ac", tip: "#faf4f8" },
-  { inner: "#e8d4e4", outer: "#c8acb8", tip: "#fffafc" },
-  { inner: "#c0a8cc", outer: "#9888b0", tip: "#f2ecf6" },
-  { inner: "#f4eef6", outer: "#d8ccd8", tip: "#ffffff" },
-  { inner: "#bcacc8", outer: "#9c8ca8", tip: "#f6f2f8" },
-  { inner: "#e0ccd8", outer: "#c0a4b4", tip: "#fff6fa" },
-  { inner: "#d8cce8", outer: "#b4a4c4", tip: "#faf8fc" },
+  { inner: "#4a78b8", outer: "#2d5288", tip: "#a8c8e8" },
+  { inner: "#5688c4", outer: "#356098", tip: "#b8d4ec" },
+  { inner: "#6896c8", outer: "#4070a0", tip: "#c4dcec" },
+  { inner: "#7ca4cc", outer: "#4c7ca8", tip: "#d0e4f0" },
+  { inner: "#88aed0", outer: "#5888b0", tip: "#dcecf4" },
+  { inner: "#94b6d4", outer: "#6494b8", tip: "#e4f0f6" },
+  { inner: "#a8b8d4", outer: "#7896b8", tip: "#ecf0f6" },
+  { inner: "#9cb0d0", outer: "#6890b4", tip: "#e8eef4" },
+  { inner: "#b0c0dc", outer: "#84a0c4", tip: "#f0f4f8" },
+  { inner: "#5680b8", outer: "#345c90", tip: "#b4d0e8" },
+  { inner: "#6890c0", outer: "#406898", tip: "#c0d8ec" },
+  { inner: "#7898c4", outer: "#4870a0", tip: "#ccdcec" },
 ];
 
-// ---------- Accent palette for florets added one at a time ----------
+// ---------- Accent palette for florets added one at a time (tap in grow mode) ----------
 const ACCENT_PALETTE: { inner: string; outer: string; tip: string }[] = [
-  { inner: "#e8b8d0", outer: "#c890a8", tip: "#fff0f6" },
-  { inner: "#f4eef6", outer: "#d0c4d8", tip: "#ffffff" },
-  { inner: "#c8b4dc", outer: "#a890c0", tip: "#f8f4fc" },
-  { inner: "#dcc8e4", outer: "#bca8c8", tip: "#faf6fc" },
-  { inner: "#f0dce8", outer: "#d0b8c8", tip: "#fffafc" },
+  { inner: "#9b7fc4", outer: "#6e52a0", tip: "#d4c4e8" },
+  { inner: "#e6acc4", outer: "#c97f9e", tip: "#f6e0ec" },
+  { inner: "#eef0f6", outer: "#c4c8d4", tip: "#ffffff" },
+  { inner: "#39497c", outer: "#222e52", tip: "#8a9ac2" },
+  { inner: "#aad2ea", outer: "#79aed2", tip: "#ddf1f9" },
 ];
 
 const PALETTE_BASE_LEN = PALETTE.length;
