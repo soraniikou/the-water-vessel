@@ -5,29 +5,29 @@ import { useState, useEffect, useRef } from "react";
 //  A hydrangea you grow with your own hands.
 // ============================================================
 
-// ---------- Realistic blue hydrangea palette ----------
+// ---------- Natural hydrangea palette (wisteria · pale pink · white · soft violet) ----------
 const PALETTE: { inner: string; outer: string; tip: string }[] = [
-  { inner: "#4a78b8", outer: "#2d5288", tip: "#a8c8e8" },
-  { inner: "#5688c4", outer: "#356098", tip: "#b8d4ec" },
-  { inner: "#6896c8", outer: "#4070a0", tip: "#c4dcec" },
-  { inner: "#7ca4cc", outer: "#4c7ca8", tip: "#d0e4f0" },
-  { inner: "#88aed0", outer: "#5888b0", tip: "#dcecf4" },
-  { inner: "#94b6d4", outer: "#6494b8", tip: "#e4f0f6" },
-  { inner: "#a8b8d4", outer: "#7896b8", tip: "#ecf0f6" },
-  { inner: "#9cb0d0", outer: "#6890b4", tip: "#e8eef4" },
-  { inner: "#b0c0dc", outer: "#84a0c4", tip: "#f0f4f8" },
-  { inner: "#5680b8", outer: "#345c90", tip: "#b4d0e8" },
-  { inner: "#6890c0", outer: "#406898", tip: "#c0d8ec" },
-  { inner: "#7898c4", outer: "#4870a0", tip: "#ccdcec" },
+  { inner: "#b8a8d4", outer: "#9484b8", tip: "#f4eef6" },
+  { inner: "#c8b4dc", outer: "#a898c4", tip: "#faf6fc" },
+  { inner: "#e4c4d8", outer: "#c4a4bc", tip: "#fff8fc" },
+  { inner: "#dcc8e8", outer: "#b8a0cc", tip: "#f8f2fa" },
+  { inner: "#f0e6f2", outer: "#d4c4dc", tip: "#ffffff" },
+  { inner: "#d4b8d0", outer: "#b498ac", tip: "#faf4f8" },
+  { inner: "#e8d4e4", outer: "#c8acb8", tip: "#fffafc" },
+  { inner: "#c0a8cc", outer: "#9888b0", tip: "#f2ecf6" },
+  { inner: "#f4eef6", outer: "#d8ccd8", tip: "#ffffff" },
+  { inner: "#bcacc8", outer: "#9c8ca8", tip: "#f6f2f8" },
+  { inner: "#e0ccd8", outer: "#c0a4b4", tip: "#fff6fa" },
+  { inner: "#d8cce8", outer: "#b4a4c4", tip: "#faf8fc" },
 ];
 
 // ---------- Accent palette for florets added one at a time ----------
 const ACCENT_PALETTE: { inner: string; outer: string; tip: string }[] = [
-  { inner: "#9b7fc4", outer: "#6e52a0", tip: "#d4c4e8" },
-  { inner: "#e6acc4", outer: "#c97f9e", tip: "#f6e0ec" },
-  { inner: "#eef0f6", outer: "#c4c8d4", tip: "#ffffff" },
-  { inner: "#39497c", outer: "#222e52", tip: "#8a9ac2" },
-  { inner: "#aad2ea", outer: "#79aed2", tip: "#ddf1f9" },
+  { inner: "#e8b8d0", outer: "#c890a8", tip: "#fff0f6" },
+  { inner: "#f4eef6", outer: "#d0c4d8", tip: "#ffffff" },
+  { inner: "#c8b4dc", outer: "#a890c0", tip: "#f8f4fc" },
+  { inner: "#dcc8e4", outer: "#bca8c8", tip: "#faf6fc" },
+  { inner: "#f0dce8", outer: "#d0b8c8", tip: "#fffafc" },
 ];
 
 const PALETTE_BASE_LEN = PALETTE.length;
@@ -47,14 +47,17 @@ const MAX_FLORETS = 60;
 function positionForIndex(i: number): { x: number; y: number; r: number; rot: number } {
   const golden = Math.PI * (3 - Math.sqrt(5));
   const a = i * golden;
-  const radius = Math.min(135, 21 * Math.sqrt(i + 0.5));
-  const jitter = Math.sin(i * 12.9898) * 6;
-  return {
-    x: Math.cos(a) * radius + jitter,
-    y: Math.sin(a) * radius + jitter * 0.6,
-    r: 33 + (i % 3),
-    rot: (a * 180) / Math.PI + 30,
-  };
+  // Tight 手毬 — slower radius growth, kept compact and overlapping
+  const radius = Math.min(92, 10.5 * Math.sqrt(i + 0.25));
+  const jitter = Math.sin(i * 12.9898) * 4.2;
+  const x = Math.cos(a) * radius + jitter;
+  const y = Math.sin(a) * radius + jitter * 0.52;
+  // Depth: center smaller, outer edge larger (top-lit roundness)
+  const distNorm = radius / 92;
+  const baseR = 30 + (i % 4);
+  const r = baseR * (0.76 + distNorm * 0.26);
+  const rot = (a * 180) / Math.PI + 28 + Math.sin(i * 7.13) * 14;
+  return { x, y, r, rot };
 }
 
 let floretCounter = 0;
@@ -69,7 +72,7 @@ function makeFloret(index: number, colorIndex?: number): Floret {
   };
 }
 
-const INITIAL_FLORET_COUNT = 24;
+const INITIAL_FLORET_COUNT = 38;
 const OPEN_FLORET_COUNT = 2;
 const INTRO_BLOOM_MS = 10_000;
 const INTRO_TO_TEND_MS = 1_500;
@@ -123,9 +126,16 @@ function FloretShape({
   const isFloating = useFloatIn && age < 2800;
   const isNew = !useFloatIn && age < 700;
 
+  // Depth & top-light: center darker/smaller feel, upper-outer brighter
+  const dist = Math.sqrt(cx * cx + cy * cy);
+  const distNorm = Math.min(1, dist / 92);
+  const depthOpacity = 0.62 + distNorm * 0.38;
+  const topLight = cy < -8 ? 1.06 : cy > 28 ? 0.88 : 1;
+
   return (
     <g transform={`translate(${cx} ${cy}) rotate(${rot})`}
       onClick={(e) => { e.stopPropagation(); onTap(floret.id); }}
+      opacity={depthOpacity * topLight}
       style={{
         cursor: mode === "remove" ? "pointer" : "default",
         transformOrigin: "center", transformBox: "fill-box",
@@ -133,13 +143,14 @@ function FloretShape({
           : isNew ? "floretBloom 0.7s ease-out both" : undefined,
       }}>
       <defs>
-        <radialGradient id={gradId} cx="50%" cy="85%" r="95%">
-          <stop offset="0%"  stopColor={outer} stopOpacity="0.95" />
-          <stop offset="45%" stopColor={inner} />
-          <stop offset="100%" stopColor={tip} />
+        <radialGradient id={gradId} cx="50%" cy="88%" r="98%">
+          <stop offset="0%"  stopColor={outer} stopOpacity="0.92" />
+          <stop offset="38%" stopColor={inner} />
+          <stop offset="78%" stopColor={tip} stopOpacity="0.95" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.98" />
         </radialGradient>
-        <radialGradient id={tipGradId} cx="50%" cy="20%" r="50%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
+        <radialGradient id={tipGradId} cx="50%" cy="18%" r="55%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.72" />
           <stop offset="100%" stopColor={tip} stopOpacity="0" />
         </radialGradient>
       </defs>
@@ -147,20 +158,20 @@ function FloretShape({
         <circle r={s * 1.15} fill="none" stroke={outer} strokeWidth="0.8" strokeOpacity="0.35" strokeDasharray="2 3" />
       )}
       {[0, 90, 180, 270].map((a, i) => {
-        const jitterA = (rand(i) - 0.5) * 14;
-        const w = s * (0.68 + rand(i + 1) * 0.18);
-        const h = s * (0.92 + rand(i + 2) * 0.22);
-        const skew = (rand(i + 3) - 0.5) * 0.15;
+        const jitterA = (rand(i) - 0.5) * 26;
+        const w = s * (0.62 + rand(i + 1) * 0.24);
+        const h = s * (0.88 + rand(i + 2) * 0.28);
+        const skew = (rand(i + 3) - 0.5) * 0.22;
         const path = `M 0 0 C ${w * 0.55} ${-h * 0.05}, ${w * (0.55 + skew)} ${-h * 0.65}, ${skew * w * 0.5} ${-h} C ${-w * (0.55 - skew)} ${-h * 0.65}, ${-w * 0.55} ${-h * 0.05}, 0 0 Z`;
         return (
           <g key={a} transform={`rotate(${a + jitterA})`}>
-            <path d={path} fill={`url(#${gradId})`} stroke={outer} strokeWidth="0.5" strokeOpacity="0.45" />
+            <path d={path} fill={`url(#${gradId})`} stroke={outer} strokeWidth="0.32" strokeOpacity="0.22" />
             <path d={path} fill={`url(#${tipGradId})`} />
           </g>
         );
       })}
-      <circle r={s * 0.10} fill={outer} opacity="0.85" />
-      <circle r={s * 0.04} fill="#fff8d8" opacity="0.7" />
+      <circle r={s * 0.10} fill={outer} opacity="0.75" />
+      <circle r={s * 0.04} fill="#fffef8" opacity="0.65" />
     </g>
   );
 }
@@ -289,7 +300,7 @@ export default function App() {
     <div style={{
       minHeight: "100vh", width: "100%",
       fontFamily: "'Shippori Mincho', 'Noto Serif JP', 'Hiragino Mincho ProN', serif",
-      background: "linear-gradient(180deg, #cbcdd2 0%, #d8dde2 60%, #c8cdd2 100%)",
+      background: "linear-gradient(180deg, #dce4dc 0%, #e8ece6 50%, #d4ddd4 100%)",
       transition: "background 2s ease", color: "#3a3a3a",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
       padding: "2rem 1rem 3rem", position: "relative", overflow: "hidden", boxSizing: "border-box",
@@ -297,9 +308,11 @@ export default function App() {
       <div aria-hidden style={{
         position: "absolute", inset: 0, pointerEvents: "none",
         background:
-          "radial-gradient(ellipse at 20% 15%, rgba(255,255,255,0.5), transparent 50%)," +
-          "radial-gradient(ellipse at 75% 25%, rgba(255,255,255,0.4), transparent 55%)," +
-          "radial-gradient(ellipse at 50% 8%, rgba(255,255,255,0.35), transparent 60%)",
+          "radial-gradient(ellipse at 18% 82%, rgba(110,145,100,0.22), transparent 48%)," +
+          "radial-gradient(ellipse at 82% 78%, rgba(120,155,110,0.16), transparent 44%)," +
+          "radial-gradient(ellipse at 20% 15%, rgba(255,255,255,0.45), transparent 50%)," +
+          "radial-gradient(ellipse at 75% 25%, rgba(255,255,255,0.35), transparent 55%)," +
+          "radial-gradient(ellipse at 50% 8%, rgba(255,255,255,0.3), transparent 60%)",
         animation: "cloudDrift 60s ease-in-out infinite alternate",
       }} />
 
@@ -485,9 +498,11 @@ export default function App() {
           transformOrigin: "center",
           animation: step === "awakening" ? "bloomReveal 1.5s ease-out both" : undefined,
         }}>
-          {florets.map((f) => (
-            <FloretShape key={f.id} floret={f} mode={mode} onTap={removeFloret} useFloatIn={step === "awakening"} />
-          ))}
+          {[...florets]
+            .sort((a, b) => (a.x * a.x + a.y * a.y) - (b.x * b.x + b.y * b.y))
+            .map((f) => (
+              <FloretShape key={f.id} floret={f} mode={mode} onTap={removeFloret} useFloatIn={step === "awakening"} />
+            ))}
         </g>
 
         {fallenTasks.map((t, i) => {
