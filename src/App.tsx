@@ -385,13 +385,13 @@ export default function App() {
           100% { transform: translate(var(--stream-x, 0px), var(--stream-y, -200px)) scale(0.6); opacity: 0; }
         }
         @keyframes petalDescend {
-          0%   { transform: translate(-50%, -240px) rotate(-8deg); opacity: 0; }
+          0%   { transform: translate(-50%, calc(-50% - 240px)) rotate(-8deg); opacity: 0; }
           10%  { opacity: 1; }
-          25%  { transform: translate(-50%, -180px) rotate(12deg); }
-          45%  { transform: translate(-50%, -100px) rotate(-10deg); }
-          65%  { transform: translate(-50%, -40px) rotate(8deg); }
-          85%  { transform: translate(-50%, 10px) rotate(-4deg); }
-          100% { transform: translate(-50%, 0px) rotate(0deg); opacity: 1; }
+          25%  { transform: translate(-50%, calc(-50% - 180px)) rotate(12deg); }
+          45%  { transform: translate(-50%, calc(-50% - 100px)) rotate(-10deg); }
+          65%  { transform: translate(-50%, calc(-50% - 40px)) rotate(8deg); }
+          85%  { transform: translate(-50%, calc(-50% + 10px)) rotate(-4deg); }
+          100% { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; }
         }
         @keyframes petalGlow {
           0%, 100% { filter: drop-shadow(0 0 8px rgba(168,200,232,0.5)); }
@@ -412,12 +412,12 @@ export default function App() {
           88%  { opacity: 0.95; }
           100% { transform: translateY(110vh) rotate(380deg); opacity: 0; }
         }
-        /* handover caption: lower on desktop, closer to center on mobile */
+        /* handover: caption below centered flower; back button at bottom center */
         .handover-caption { top: calc(50% + 100px); }
-        .handover-back { bottom: 2.5rem; top: auto; }
+        .handover-back { bottom: 2.5rem; }
         @media (max-width: 600px) {
-          .handover-caption { top: calc(50% + 18px); }
-          .handover-back { bottom: auto; top: calc(50% + 150px); }
+          .handover-caption { top: calc(50% + 72px); }
+          .handover-back { bottom: 2rem; }
         }
         .fade-up { animation: fadeUp 1.2s ease-out both; }
         .voice-line {
@@ -882,7 +882,6 @@ export default function App() {
 
           <div style={{
             position: "absolute", left: "50%", top: "50%",
-            transform: "translate(-50%, 0)",
             animation: "petalDescend 4s cubic-bezier(0.4, 0, 0.4, 1) both",
             cursor: handoverTouched ? "default" : "pointer",
           }}
@@ -922,49 +921,62 @@ export default function App() {
 
           <div className="handover-caption" style={{
             position: "absolute",
-            left: "50%", transform: "translateX(-50%)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "90%",
+            maxWidth: 360,
             textAlign: "center",
-            opacity: 0, animation: "whisperIn 2s ease-out 4.2s forwards",
-            pointerEvents: "none", width: "100%", maxWidth: 360,
+            wordBreak: "keep-all",
+            padding: "0 1rem",
+            boxSizing: "border-box",
+            pointerEvents: "none",
           }}>
-            <p style={{
-              fontSize: "1.15rem", letterSpacing: "0.22em",
-              color: "#2a3a52", fontStyle: "italic",
-              margin: 0, fontFamily: "inherit",
+            <div style={{
+              opacity: 0,
+              animation: "whisperIn 2s ease-out 4.2s forwards",
             }}>
-              ここに　ゆり落ちる
-            </p>
-            {!handoverTouched && (
               <p style={{
-                marginTop: "1.5rem", fontSize: "0.78rem",
-                letterSpacing: "0.3em", color: "#4a5e7a",
-                animation: "pulseHint 3s ease-in-out infinite",
-                fontStyle: "italic",
+                fontSize: "1.15rem", letterSpacing: "0.22em",
+                color: "#2a3a52", fontStyle: "italic",
+                margin: 0, fontFamily: "inherit",
               }}>
-                はなびらに 触れてみて
+                ここに　ゆり落ちる
               </p>
-            )}
-            {handoverTouched && (
-              <p style={{
-                marginTop: "1.5rem", minHeight: "1.8em",
-                fontSize: "1.1rem", letterSpacing: "0.22em", color: "#a64d7a",
-                fontStyle: "italic",
-              }}>
-                {HANDOVER_MESSAGE.slice(0, handoverTyped)}
-                {handoverTyped < HANDOVER_MESSAGE.length && <span style={{ opacity: 0.4 }}>｜</span>}
-              </p>
-            )}
+              {!handoverTouched && (
+                <p style={{
+                  marginTop: "1.5rem", fontSize: "0.78rem",
+                  letterSpacing: "0.3em", color: "#4a5e7a",
+                  animation: "pulseHint 3s ease-in-out infinite",
+                  fontStyle: "italic",
+                }}>
+                  はなびらに 触れてみて
+                </p>
+              )}
+              {handoverTouched && (
+                <p style={{
+                  marginTop: "1.5rem", minHeight: "1.8em",
+                  fontSize: "1.1rem", letterSpacing: "0.22em", color: "#a64d7a",
+                  fontStyle: "italic",
+                }}>
+                  {HANDOVER_MESSAGE.slice(0, handoverTyped)}
+                  {handoverTyped < HANDOVER_MESSAGE.length && <span style={{ opacity: 0.4 }}>｜</span>}
+                </p>
+              )}
+            </div>
           </div>
 
-          <button type="button"
-            className="handover-back"
+          <div className="handover-back" style={{
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}>
+            <button type="button"
             onClick={() => {
               if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
               setFlorets(seedBloom());
               setStep("open");
             }}
             style={{
-              position: "absolute", left: "50%", transform: "translateX(-50%)",
               padding: "0.6rem 1.8rem", fontFamily: "inherit",
               fontSize: "0.85rem", letterSpacing: "0.25em",
               background: "transparent", border: "1px solid rgba(45,82,136,0.4)",
@@ -973,6 +985,7 @@ export default function App() {
             }}>
             back
           </button>
+          </div>
         </div>
       )}
     </div>
