@@ -79,12 +79,15 @@ const INTRO_TO_TEND_MS = 1_500;
 const STEM_GROW_MS = 6_000;
 
 // ---------- Blessing scene (pink hydrangea + slow droplet + message) ----------
-const PINK_PALETTE: { inner: string; outer: string }[] = [
-  { inner: "#e8a8c4", outer: "#c97f9e" },
-  { inner: "#f0bcd2", outer: "#d692ae" },
-  { inner: "#e89ab8", outer: "#c06e92" },
-  { inner: "#f4c8da", outer: "#dca0bc" },
-  { inner: "#e6b0c8", outer: "#c885a4" },
+const PINK_PALETTE: { inner: string; outer: string; tip: string }[] = [
+  { inner: "#e8a8c4", outer: "#c97f9e", tip: "#faf0f4" },
+  { inner: "#f0bcd2", outer: "#d692ae", tip: "#fff6fa" },
+  { inner: "#e89ab8", outer: "#c06e92", tip: "#fce8f0" },
+  { inner: "#f4c8da", outer: "#dca0bc", tip: "#fff8fb" },
+  { inner: "#e6b0c8", outer: "#c885a4", tip: "#fdf2f6" },
+  { inner: "#f0c8dc", outer: "#d8a0b8", tip: "#fffafc" },
+  { inner: "#eca8c0", outer: "#c8809c", tip: "#fceef4" },
+  { inner: "#f8dce8", outer: "#dcb8c8", tip: "#ffffff" },
 ];
 const BLESSING_MESSAGE = "あなたは美しい";
 const BLESSING_DROP_MS = 10_000;
@@ -102,14 +105,19 @@ function seedBloom(): Floret[] {
 
 function FloretShape({
   floret, mode, onTap, useFloatIn = false,
+  colors, interactive = true, skipDepth = false,
 }: {
   floret: Floret; mode: GrowMode; onTap: (id: number) => void; useFloatIn?: boolean;
+  colors?: { inner: string; outer: string; tip: string };
+  interactive?: boolean;
+  skipDepth?: boolean;
 }) {
+  const paletteEntry = colors ?? PALETTE[floret.colorIndex];
   const { x: cx, y: cy, r: size, rot, inner, outer, tip, seed } = {
     ...floret,
-    inner: PALETTE[floret.colorIndex].inner,
-    outer: PALETTE[floret.colorIndex].outer,
-    tip: PALETTE[floret.colorIndex].tip,
+    inner: paletteEntry.inner,
+    outer: paletteEntry.outer,
+    tip: paletteEntry.tip,
   };
   const s = size * 0.62;
   const rand = (n: number) => {
@@ -134,10 +142,10 @@ function FloretShape({
 
   return (
     <g transform={`translate(${cx} ${cy}) rotate(${rot})`}
-      onClick={(e) => { e.stopPropagation(); onTap(floret.id); }}
-      opacity={depthOpacity * topLight}
+      onClick={interactive ? (e) => { e.stopPropagation(); onTap(floret.id); } : undefined}
+      opacity={skipDepth ? 1 : depthOpacity * topLight}
       style={{
-        cursor: mode === "remove" ? "pointer" : "default",
+        cursor: interactive && mode === "remove" ? "pointer" : "default",
         transformOrigin: "center", transformBox: "fill-box",
         animation: isFloating ? "floretFloatIn 2.8s ease-out both"
           : isNew ? "floretBloom 0.7s ease-out both" : undefined,
@@ -154,7 +162,7 @@ function FloretShape({
           <stop offset="100%" stopColor={tip} stopOpacity="0" />
         </radialGradient>
       </defs>
-      {mode === "remove" && (
+      {interactive && mode === "remove" && (
         <circle r={s * 1.15} fill="none" stroke={outer} strokeWidth="0.8" strokeOpacity="0.35" strokeDasharray="2 3" />
       )}
       {[0, 90, 180, 270].map((a, i) => {
@@ -685,20 +693,25 @@ export default function App() {
             <svg viewBox="-120 -150 240 330" width="100%" style={{ display: "block" }}>
               <path d="M 0 30 Q 8 120 -2 230" stroke="#6e8a5a" strokeWidth="2.5" fill="none" strokeLinecap="round" />
               <g>
-                {florets.slice(0, Math.min(florets.length, 28)).map((f, i) => {
-                  const c = PINK_PALETTE[i % PINK_PALETTE.length];
-                  const sx = f.x * 0.55;
-                  const sy = f.y * 0.55 - 40;
-                  return (
-                    <g key={f.id} transform={`translate(${sx} ${sy}) scale(2)`}>
-                      {[0, 90, 180, 270].map((a) => (
-                        <path key={a} d="M 0 0 C 8 -1, 8 -12, 0 -16 C -8 -12, -8 -1, 0 0 Z"
-                          transform={`rotate(${a + i * 3})`} fill={c.inner} stroke={c.outer} strokeWidth="0.4" opacity="0.95" />
-                      ))}
-                      <circle r="1.4" fill={c.outer} opacity="0.7" />
-                    </g>
-                  );
-                })}
+                {[...florets].slice(0, Math.min(florets.length, 28))
+                  .sort((a, b) => (a.x * a.x + a.y * a.y) - (b.x * b.x + b.y * b.y))
+                  .map((f, i) => (
+                    <FloretShape
+                      key={f.id}
+                      floret={{
+                        ...f,
+                        x: f.x * 0.55,
+                        y: f.y * 0.55 - 40,
+                        r: f.r * 2,
+                        seed: f.seed + 5000,
+                        born: Date.now() - 60_000,
+                      }}
+                      colors={PINK_PALETTE[i % PINK_PALETTE.length]}
+                      mode="grow"
+                      onTap={() => {}}
+                      interactive={false}
+                    />
+                  ))}
               </g>
             </svg>
 
@@ -886,33 +899,23 @@ export default function App() {
               transform: handoverTouched ? "scale(1.15)" : "scale(1)",
               filter: "blur(1px)",
             }}>
-            <svg viewBox="-50 -50 100 100" width="120" height="120" style={{
+            <svg viewBox="-70 -70 140 140" width="120" height="120" style={{
               display: "block",
               animation: handoverTouched
                 ? "spin12 12s linear infinite"
                 : "petalGlow 2.8s ease-in-out infinite, spin12 12s linear infinite",
             }}>
-              <defs>
-                <radialGradient id="handoverGrad" cx="50%" cy="80%" r="90%">
-                  <stop offset="0%"  stopColor="#b5497e" />
-                  <stop offset="45%" stopColor="#e08ab0" />
-                  <stop offset="100%" stopColor="#fbe6f0" />
-                </radialGradient>
-                <radialGradient id="handoverHighlight" cx="50%" cy="25%" r="55%">
-                  <stop offset="0%"  stopColor="#ffffff" stopOpacity="0.7" />
-                  <stop offset="100%" stopColor="#fbe6f0" stopOpacity="0" />
-                </radialGradient>
-              </defs>
-              {[0, 90, 180, 270].map((a) => (
-                <g key={a} transform={`rotate(${a})`}>
-                  <path d="M 0 0 C 22 -2, 22 -28, 0 -40 C -22 -28, -22 -2, 0 0 Z"
-                    fill="url(#handoverGrad)" stroke="#c06e92" strokeWidth="0.6" strokeOpacity="0.5" />
-                  <path d="M 0 0 C 22 -2, 22 -28, 0 -40 C -22 -28, -22 -2, 0 0 Z"
-                    fill="url(#handoverHighlight)" />
-                </g>
-              ))}
-              <circle r="4" fill="#b5497e" opacity="0.85" />
-              <circle r="1.5" fill="#fff8d8" opacity="0.7" />
+              <FloretShape
+                floret={{
+                  id: -1, x: 0, y: 0, r: 52, rot: 0, seed: 8800, colorIndex: 0,
+                  born: Date.now() - 60_000,
+                }}
+                colors={PINK_PALETTE[0]}
+                mode="grow"
+                onTap={() => {}}
+                interactive={false}
+                skipDepth
+              />
             </svg>
             </div>
           </div>
