@@ -525,7 +525,7 @@ export default function App() {
               </button>
             </div>
             <button type="button" onClick={() => setStep("task")} style={{ ...btnStyle, padding: "0.49rem 0.84rem", fontSize: "0.665rem", letterSpacing: "0.105em", background: accentColor, color: "#fff" }}>
-              この花で、すすむ
+              このお花（私）ですすむ
             </button>
           </div>
         )}
