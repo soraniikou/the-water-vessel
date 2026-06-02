@@ -94,6 +94,48 @@ const BLESSING_DROP_MS = 10_000;
 const BLESSING_TYPE_MS = 380;
 const HANDOVER_MESSAGE = "あなたは愛されていい";
 const HANDOVER_TYPE_MS = 380;
+const REFLECTION_FALL_MS = 6_000;
+const REFLECTION_FALL_DIST = 95;
+const UNDERWATER_GRAY = { inner: "#adb2ba", outer: "#92969e", tip: "#d6d9de" };
+const DESKTOP_MIN_WIDTH = 768;
+
+function lerpHex(c1: string, c2: string, t: number): string {
+  const parse = (h: string) => {
+    const n = parseInt(h.replace("#", ""), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255] as const;
+  };
+  const [r1, g1, b1] = parse(c1);
+  const [r2, g2, b2] = parse(c2);
+  const ch = (a: number, b: number) => Math.round(a + (b - a) * t);
+  const r = ch(r1, r2), g = ch(g1, g2), b = ch(b1, b2);
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
+function lerpPalette(
+  from: { inner: string; outer: string; tip: string },
+  to: { inner: string; outer: string; tip: string },
+  t: number,
+) {
+  return {
+    inner: lerpHex(from.inner, to.inner, t),
+    outer: lerpHex(from.outer, to.outer, t),
+    tip: lerpHex(from.tip, to.tip, t),
+  };
+}
+
+function useIsDesktop(minWidth = DESKTOP_MIN_WIDTH): boolean {
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.innerWidth >= minWidth,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${minWidth}px)`);
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [minWidth]);
+  return isDesktop;
+}
 
 function seedBloom(): Floret[] {
   const born = Date.now() - 60_000;
@@ -105,12 +147,13 @@ function seedBloom(): Floret[] {
 
 function FloretShape({
   floret, mode, onTap, useFloatIn = false,
-  colors, interactive = true, skipDepth = false,
+  colors, interactive = true, skipDepth = false, sizeMul = 1,
 }: {
   floret: Floret; mode: GrowMode; onTap: (id: number) => void; useFloatIn?: boolean;
   colors?: { inner: string; outer: string; tip: string };
   interactive?: boolean;
   skipDepth?: boolean;
+  sizeMul?: number;
 }) {
   const paletteEntry = colors ?? PALETTE[floret.colorIndex];
   const { x: cx, y: cy, r: size, rot, inner, outer, tip, seed } = {
@@ -119,7 +162,7 @@ function FloretShape({
     outer: paletteEntry.outer,
     tip: paletteEntry.tip,
   };
-  const s = size * 0.62;
+  const s = size * 0.62 * sizeMul;
   const rand = (n: number) => {
     const v = Math.sin(seed * 9.7 + n * 3.1) * 10000;
     return v - Math.floor(v);
@@ -215,6 +258,8 @@ export default function App() {
   const [dropletLanded, setDropletLanded] = useState(false);
   const [blessingTyped, setBlessingTyped] = useState(0);
   const [handoverTyped, setHandoverTyped] = useState(0);
+  const [reflectionFallT, setReflectionFallT] = useState(0);
+  const isDesktop = useIsDesktop();
 
   const [, force] = useState(0);
   useEffect(() => {
@@ -266,6 +311,23 @@ export default function App() {
     const id = setTimeout(() => setHandoverTyped((n) => n + 1), HANDOVER_TYPE_MS);
     return () => clearTimeout(id);
   }, [step, handoverTouched, handoverTyped]);
+
+  // Reflection: above petals fall into the water over 6s; underwater petals gray → blue
+  useEffect(() => {
+    if (step !== "reflection") {
+      setReflectionFallT(0);
+      return;
+    }
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / REFLECTION_FALL_MS);
+      setReflectionFallT(t);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [step]);
 
   const activeTasks = tasks.filter((t) => !t.done);
   const fallenTasks = tasks.filter((t) => t.done);
@@ -509,7 +571,8 @@ export default function App() {
           {[...florets]
             .sort((a, b) => (a.x * a.x + a.y * a.y) - (b.x * b.x + b.y * b.y))
             .map((f) => (
-              <FloretShape key={f.id} floret={f} mode={mode} onTap={removeFloret} useFloatIn={step === "awakening"} />
+              <FloretShape key={f.id} floret={f} mode={mode} onTap={removeFloret}
+                useFloatIn={step === "awakening"} sizeMul={isDesktop ? 1.5 : 1} />
             ))}
         </g>
 
@@ -611,8 +674,10 @@ export default function App() {
                   const c = PALETTE[f.colorIndex];
                   const sx = f.x * 0.55;
                   const sy = f.y * 0.55 - 30;
+                  const fallY = reflectionFallT * REFLECTION_FALL_DIST;
+                  const fallOpacity = 1 - reflectionFallT * 0.35;
                   return (
-                    <g key={f.id} transform={`translate(${sx} ${sy})`}>
+                    <g key={f.id} transform={`translate(${sx} ${sy + fallY})`} opacity={fallOpacity}>
                       {[0, 90, 180, 270].map((a) => (
                         <path key={a} d="M 0 0 C 8 -1, 8 -12, 0 -16 C -8 -12, -8 -1, 0 0 Z"
                           transform={`rotate(${a + i * 3})`} fill={c.inner} stroke={c.outer} strokeWidth="0.4" opacity="0.92" />
@@ -637,7 +702,8 @@ export default function App() {
                 <path d="M 0 60 Q 6 90 -2 120" stroke="#3a4a2c" strokeWidth="2.5" fill="none" strokeLinecap="round" />
                 <g>
                   {florets.slice(0, Math.min(florets.length, 28)).map((f, i) => {
-                    const c = PALETTE[f.colorIndex];
+                    const blue = PALETTE[f.colorIndex];
+                    const c = lerpPalette(UNDERWATER_GRAY, blue, reflectionFallT);
                     const sx = f.x * 0.55;
                     const sy = f.y * 0.55 - 30;
                     return (
