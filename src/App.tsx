@@ -94,7 +94,7 @@ const BLESSING_DROP_MS = 10_000;
 const BLESSING_TYPE_MS = 380;
 const HANDOVER_MESSAGE = "あなたは愛されていい";
 const HANDOVER_TYPE_MS = 380;
-const REFLECTION_FALL_MS = 6_000;
+const REFLECTION_FALL_MS = 24_000;
 const REFLECTION_FALL_DIST = 95;
 const UNDERWATER_GRAY = { inner: "#adb2ba", outer: "#92969e", tip: "#d6d9de" };
 const DESKTOP_MIN_WIDTH = 768;
@@ -439,7 +439,11 @@ export default function App() {
         @keyframes rippleWide {
           0%   { transform: translateX(-50%) scale(0.3); opacity: 0.95; }
           60%  { opacity: 0.7; }
-          100% { transform: translateX(-50%) scale(4.8); opacity: 0; }
+          100% { transform: translateX(-50%) scale(7.2); opacity: 0; }
+        }
+        @keyframes reflectionRippleText {
+          0%, 18%  { opacity: 0; transform: translate(-50%, -50%) scale(0.85); letter-spacing: 0.42em; }
+          32%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); letter-spacing: 0.16em; }
         }
         @keyframes waterShimmer { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.85; } }
         @keyframes petalStream {
@@ -693,7 +697,7 @@ export default function App() {
               background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)",
               marginTop: "0.4rem",
             }} />
-            <div style={{ position: "relative", width: "100%", animation: "waterRise 2.2s ease-out 0.4s both" }}>
+            <div style={{ position: "relative", width: "100%", animation: "waterRise 8.8s ease-out 0.4s both" }}>
               <svg viewBox="-120 -130 240 260" width="100%" style={{
                 display: "block", transform: "scaleY(-1)",
                 filter: "blur(0.7px) brightness(0.78) hue-rotate(-8deg)",
@@ -719,20 +723,27 @@ export default function App() {
               </svg>
               <div style={{
                 position: "absolute", top: "10%", left: "50%", width: "60px", height: "12px",
-                border: "2px solid rgba(255,255,255,0.98)", borderRadius: "50%",
-                boxShadow: "0 0 10px rgba(255,255,255,0.85)",
-                animation: "rippleWide 10.5s ease-out 1.5s infinite", pointerEvents: "none",
-              }} />
+                pointerEvents: "none",
+              }}>
+                <div style={{
+                  position: "absolute", inset: 0,
+                  border: "2px solid rgba(255,255,255,0.98)", borderRadius: "50%",
+                  boxShadow: "0 0 10px rgba(255,255,255,0.85)",
+                  animation: "rippleWide 10.5s ease-out 1.5s infinite",
+                }} />
+                <p style={{
+                  position: "absolute", left: 0, top: "50%",
+                  margin: 0, whiteSpace: "nowrap",
+                  fontSize: "1.08rem", letterSpacing: "0.16em",
+                  color: "#2a3a52", fontStyle: "italic", fontFamily: "inherit",
+                  opacity: 0,
+                  animation: "reflectionRippleText 10.5s ease-out 5.5s 1 forwards",
+                }}>
+                  閉じ込めてきた自分も自分
+                </p>
+              </div>
             </div>
           </div>
-
-          <p style={{
-            marginTop: "1.5rem", fontSize: "1.05rem", letterSpacing: "0.22em",
-            color: "#2a3a52", fontStyle: "italic", textAlign: "center",
-            opacity: 0, animation: "whisperIn 2s ease-out 2.5s forwards",
-          }}>
-            映った姿も、本物
-          </p>
 
           <button type="button" onClick={() => setStep("blessing")}
             style={{
