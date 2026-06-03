@@ -90,6 +90,10 @@ const PINK_PALETTE: { inner: string; outer: string; tip: string }[] = [
   { inner: "#f8dce8", outer: "#dcb8c8", tip: "#ffffff" },
 ];
 const HANDOVER_PETAL_SKY = { inner: "#aad2ea", outer: "#7eb8d8" };
+const HANDOVER_PETAL_YELLOW = { inner: "#f5d04a", outer: "#d4a820" };
+const SUNFLOWER_COLORS = { inner: "#f2c414", outer: "#d9a00c", tip: "#ffeb68" };
+const SUNFLOWER_CENTER = { inner: "#7a5230", outer: "#4a3018" };
+const HANDOVER_SUNFLOWER_MS = 10_000;
 const BLESSING_MESSAGE = "あなたは美しい";
 const BLESSING_DROP_MS = 10_000;
 const BLESSING_TYPE_MS = 380;
@@ -146,23 +150,60 @@ function seedBloom(): Floret[] {
   });
 }
 
+/** Hydrangea teardrop (base at origin, tip upward). */
+function hydrangeaPetalPath(w: number, h: number, skew: number): string {
+  return `M 0 0 C ${w * 0.55} ${-h * 0.05}, ${w * (0.55 + skew)} ${-h * 0.65}, ${skew * w * 0.5} ${-h} C ${-w * (0.55 - skew)} ${-h * 0.65}, ${-w * 0.55} ${-h * 0.05}, 0 0 Z`;
+}
+
+/** Sunflower petal: smooth sides + symmetric dome tip (one continuous curve, no fork). */
+function sunflowerPetalPath(w: number, h: number, skew: number, bulge: number): string {
+  const mx = w * (0.36 + bulge * 0.34);
+  const belly = 0.32 + bulge * 0.12;
+  const tipX = skew * w * 0.05;
+  const tipY = -h * 0.92;
+  const domeY = tipY - h * 0.06;
+  const topL = tipX - w * 0.045;
+  const topR = tipX + w * 0.045;
+  const joinY = tipY - h * 0.012;
+  return [
+    "M 0 0",
+    `C ${-w * 0.1} ${-h * 0.04}, ${-mx * 0.55} ${-h * belly}, ${-mx * 0.88} ${-h * (belly + 0.1)}`,
+    `C ${-mx * 1.02} ${-h * (belly + 0.22)}, ${-mx * 0.95} ${-h * (belly + 0.36)}, ${-mx * 0.75} ${-h * (belly + 0.48)}`,
+    `C ${-mx * 0.52} ${-h * 0.78}, ${-mx * 0.2} ${-h * 0.9}, ${topL} ${joinY}`,
+    `C ${tipX} ${domeY}, ${tipX} ${domeY}, ${topR} ${joinY}`,
+    `C ${mx * 0.2} ${-h * 0.9}, ${mx * 0.52} ${-h * 0.78}, ${mx * 0.75} ${-h * (belly + 0.48)}`,
+    `C ${mx * 0.95} ${-h * (belly + 0.36)}, ${mx * 1.02} ${-h * (belly + 0.22)}, ${mx * 0.88} ${-h * (belly + 0.1)}`,
+    `C ${mx * 0.55} ${-h * belly}, ${w * 0.1} ${-h * 0.04}, 0 0 Z`,
+  ].join(" ");
+}
+
+function buildPetalPath(w: number, h: number, skew: number, morph: number): string {
+  if (morph < 0.1) return hydrangeaPetalPath(w, h, skew);
+  const bulge = Math.min(1, (morph - 0.1) / 0.9);
+  return sunflowerPetalPath(w, h, skew * (1 - bulge * 0.5), bulge);
+}
+
 function FloretShape({
   floret, mode, onTap, useFloatIn = false,
   colors, interactive = true, skipDepth = false, sizeMul = 1,
+  sunflowerMorph = 0,
 }: {
   floret: Floret; mode: GrowMode; onTap: (id: number) => void; useFloatIn?: boolean;
   colors?: { inner: string; outer: string; tip: string };
   interactive?: boolean;
   skipDepth?: boolean;
   sizeMul?: number;
+  sunflowerMorph?: number;
 }) {
   const paletteEntry = colors ?? PALETTE[floret.colorIndex];
+  const morph = Math.max(0, Math.min(1, sunflowerMorph));
   const { x: cx, y: cy, r: size, rot, inner, outer, tip, seed } = {
     ...floret,
-    inner: paletteEntry.inner,
-    outer: paletteEntry.outer,
-    tip: paletteEntry.tip,
+    inner: lerpHex(paletteEntry.inner, SUNFLOWER_COLORS.inner, morph),
+    outer: lerpHex(paletteEntry.outer, SUNFLOWER_COLORS.outer, morph),
+    tip: lerpHex(paletteEntry.tip, SUNFLOWER_COLORS.tip, morph),
   };
+  const centerOuter = lerpHex(outer, SUNFLOWER_CENTER.outer, morph);
   const s = size * 0.62 * sizeMul;
   const rand = (n: number) => {
     const v = Math.sin(seed * 9.7 + n * 3.1) * 10000;
@@ -209,21 +250,30 @@ function FloretShape({
       {interactive && mode === "remove" && (
         <circle r={s * 1.15} fill="none" stroke={outer} strokeWidth="0.8" strokeOpacity="0.35" strokeDasharray="2 3" />
       )}
-      {[0, 90, 180, 270].map((a, i) => {
-        const jitterA = (rand(i) - 0.5) * 26;
-        const w = s * (0.62 + rand(i + 1) * 0.24);
-        const h = s * (0.88 + rand(i + 2) * 0.28);
-        const skew = (rand(i + 3) - 0.5) * 0.22;
-        const path = `M 0 0 C ${w * 0.55} ${-h * 0.05}, ${w * (0.55 + skew)} ${-h * 0.65}, ${skew * w * 0.5} ${-h} C ${-w * (0.55 - skew)} ${-h * 0.65}, ${-w * 0.55} ${-h * 0.05}, 0 0 Z`;
+      {Array.from({ length: Math.round(4 + morph * 12) }, (_, i) => {
+        const petalCount = Math.round(4 + morph * 12);
+        const baseAngle = (360 / petalCount) * i;
+        const jitterA = (rand(i) - 0.5) * 26 * (1 - morph);
+        const w = s * (0.62 + rand(i + 1) * 0.24 * (1 - morph * 0.85)) * (1 - morph * 0.28);
+        const h = s * (0.88 + rand(i + 2) * 0.28 * (1 - morph * 0.85)) * (1 + morph * 1.75);
+        const skew = (rand(i + 3) - 0.5) * 0.22 * (1 - morph);
+        const path = buildPetalPath(w, h, skew, morph);
+        const petalStrokeW = 0.32 + morph * 0.3;
+        const petalStrokeOp = 0.22 + morph * 0.3;
+        const petalStroke = morph > 0.15
+          ? lerpHex(outer, lerpHex(outer, SUNFLOWER_COLORS.outer, 0.35), Math.min(1, (morph - 0.15) / 0.85) * 0.55)
+          : outer;
         return (
-          <g key={a} transform={`rotate(${a + jitterA})`}>
-            <path d={path} fill={`url(#${gradId})`} stroke={outer} strokeWidth="0.32" strokeOpacity="0.22" />
-            <path d={path} fill={`url(#${tipGradId})`} />
+          <g key={i} transform={`rotate(${baseAngle + jitterA})`}>
+            <path d={path} fill={`url(#${gradId})`} stroke={petalStroke}
+              strokeWidth={petalStrokeW} strokeOpacity={petalStrokeOp}
+              strokeLinejoin="round" strokeLinecap="round" />
+            {morph < 0.35 && <path d={path} fill={`url(#${tipGradId})`} />}
           </g>
         );
       })}
-      <circle r={s * 0.10} fill={outer} opacity="0.75" />
-      <circle r={s * 0.04} fill="#fffef8" opacity="0.65" />
+      <circle r={s * (0.10 + morph * 0.14)} fill={centerOuter} opacity={0.75 + morph * 0.15} />
+      <circle r={s * (0.04 + morph * 0.02)} fill={morph > 0.4 ? "#3d2810" : "#fffef8"} opacity={0.65 + morph * 0.2} />
     </g>
   );
 }
@@ -259,6 +309,7 @@ export default function App() {
   const [dropletLanded, setDropletLanded] = useState(false);
   const [blessingTyped, setBlessingTyped] = useState(0);
   const [handoverTyped, setHandoverTyped] = useState(0);
+  const [sunflowerBlendT, setSunflowerBlendT] = useState(0);
   const [reflectionFallT, setReflectionFallT] = useState(0);
   const isDesktop = useIsDesktop();
 
@@ -302,8 +353,26 @@ export default function App() {
     if (step === "handover") {
       setHandoverTouched(false);
       setHandoverTyped(0);
+      setSunflowerBlendT(0);
     }
   }, [step]);
+
+  // Handover: after final message, hydrangea → sunflower over 10s (spin speed unchanged)
+  useEffect(() => {
+    if (step !== "handover" || handoverTyped < HANDOVER_MESSAGE.length) {
+      if (step !== "handover") setSunflowerBlendT(0);
+      return;
+    }
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / HANDOVER_SUNFLOWER_MS);
+      setSunflowerBlendT(t);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [step, handoverTyped]);
 
   // Handover scene: type the final message once the petal is touched
   useEffect(() => {
@@ -479,6 +548,12 @@ export default function App() {
           88%  { opacity: 0.95; }
           100% { transform: translateY(-110vh) rotate(-380deg); opacity: 0; }
         }
+        @keyframes petalFall {
+          0%   { transform: translateY(-12vh) rotate(0deg); opacity: 0; }
+          12%  { opacity: 0.95; }
+          88%  { opacity: 0.95; }
+          100% { transform: translateY(110vh) rotate(380deg); opacity: 0; }
+        }
         /* handover: caption below centered flower; back button at bottom center */
         .handover-caption { top: calc(50% + 100px); }
         .handover-back { bottom: 2.5rem; }
@@ -507,7 +582,6 @@ export default function App() {
           the water vessel
         </h1>
         <p className="voice-line" style={{ marginTop: "0.4rem" }}>
-          {step === "open"      && "（声：今日もここにあるよ）"}
           {step === "awakening" && ""}
           {step === "tend"      && (mode === "grow" ? "空いたところを そっと 押すと、咲きます" : "花びらを 押すと、ひとつ 手放せます")}
           {step === "task"     && ""}
@@ -542,15 +616,6 @@ export default function App() {
             <path d="M -40 272 Q -50 296 -56 332" stroke="#5a7a5b" strokeWidth="0.4" fill="none" opacity="0.3" />
             <path d="M -60 290 Q -70 312 -74 346" stroke="#5a7a5b" strokeWidth="0.4" fill="none" opacity="0.3" />
           </g>
-          {step === "tend" && (
-            <text x="-29" y="185" textAnchor="middle"
-              fill="rgba(255,255,255,0.9)" fontSize="8"
-              fontFamily="'Shippori Mincho', 'Noto Serif JP', serif"
-              letterSpacing="0.05em"
-              style={{ pointerEvents: "none", userSelect: "none" }}>
-              いま{florets.length}輪
-            </text>
-          )}
         </g>
 
         <g>
@@ -934,19 +999,20 @@ export default function App() {
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           padding: "2rem 1.5rem", animation: "fadeUp 1.4s ease-out both",
         }}>
-          {/* small petals drifting up after the touch — continues until back */}
+          {/* petals drifting up (pink / sky) and down from top (yellow) — same speed */}
           {handoverTouched && (
             <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
               {Array.from({ length: 14 }).map((_, i) => {
                 const pink = PINK_PALETTE[i % PINK_PALETTE.length];
-                const inner = lerpHex(pink.inner, HANDOVER_PETAL_SKY.inner, 0.5);
-                const outer = lerpHex(pink.outer, HANDOVER_PETAL_SKY.outer, 0.5);
+                const isPinkPetal = i % 2 === 0;
+                const inner = isPinkPetal ? pink.inner : HANDOVER_PETAL_SKY.inner;
+                const outer = isPinkPetal ? pink.outer : HANDOVER_PETAL_SKY.outer;
                 const left = (i * 37 + 6) % 100;
                 const dur = 7 + (i % 5) * 1.6;
                 const delay = (i % 7) * 0.7;
                 const size = 7 + (i % 3) * 3;
                 return (
-                  <div key={i} style={{
+                  <div key={`up-${i}`} style={{
                     position: "absolute", bottom: 0, left: `${left}%`,
                     width: size, height: size * 0.72,
                     background: inner,
@@ -954,6 +1020,23 @@ export default function App() {
                     boxShadow: `0 0 4px ${outer}`,
                     opacity: 0,
                     animation: `petalRise ${dur}s linear ${delay}s infinite`,
+                  }} />
+                );
+              })}
+              {Array.from({ length: 14 }).map((_, i) => {
+                const left = (i * 41 + 11) % 100;
+                const dur = 7 + (i % 5) * 1.6;
+                const delay = (i % 7) * 0.7;
+                const size = 7 + (i % 3) * 3;
+                return (
+                  <div key={`down-${i}`} style={{
+                    position: "absolute", top: 0, left: `${left}%`,
+                    width: size, height: size * 0.72,
+                    background: HANDOVER_PETAL_YELLOW.inner,
+                    borderRadius: "50% 50% 50% 50% / 62% 62% 38% 38%",
+                    boxShadow: `0 0 4px ${HANDOVER_PETAL_YELLOW.outer}`,
+                    opacity: 0,
+                    animation: `petalFall ${dur}s linear ${delay}s infinite`,
                   }} />
                 );
               })}
@@ -981,7 +1064,7 @@ export default function App() {
             <svg viewBox="-70 -70 140 140" width="120" height="120" style={{
               display: "block",
               animation: handoverTouched
-                ? "spin12 12s linear infinite"
+                ? `spin12 ${sunflowerBlendT > 0 ? 24 : 12}s linear infinite`
                 : "petalGlow 2.8s ease-in-out infinite, spin12 12s linear infinite",
             }}>
               <FloretShape
@@ -990,6 +1073,7 @@ export default function App() {
                   born: Date.now() - 60_000,
                 }}
                 colors={PINK_PALETTE[0]}
+                sunflowerMorph={sunflowerBlendT}
                 mode="grow"
                 onTap={() => {}}
                 interactive={false}
