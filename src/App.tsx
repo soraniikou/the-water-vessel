@@ -91,10 +91,10 @@ const PINK_PALETTE: { inner: string; outer: string; tip: string }[] = [
 ];
 const HANDOVER_PETAL_SKY = { inner: "#aad2ea", outer: "#7eb8d8" };
 const HANDOVER_PETAL_YELLOW = { inner: "#f5d04a", outer: "#d4a820" };
-const SUNFLOWER_COLORS = { inner: "#f2c414", outer: "#d9a00c", tip: "#ffeb68" };
+const SUNFLOWER_COLORS = { inner: "#f8c818", outer: "#e0a808", tip: "#ffe850" };
 const SUNFLOWER_CENTER = { inner: "#7a5230", outer: "#4a3018" };
 const HANDOVER_SUNFLOWER_MS = 10_000;
-const BLESSING_MESSAGE = "あなたは美しい";
+const BLESSING_MESSAGE = "あなたを解放させてみますか";
 const BLESSING_DROP_MS = 10_000;
 const BLESSING_TYPE_MS = 380;
 const HANDOVER_MESSAGE = "あなたは愛されていい";
@@ -155,25 +155,26 @@ function hydrangeaPetalPath(w: number, h: number, skew: number): string {
   return `M 0 0 C ${w * 0.55} ${-h * 0.05}, ${w * (0.55 + skew)} ${-h * 0.65}, ${skew * w * 0.5} ${-h} C ${-w * (0.55 - skew)} ${-h * 0.65}, ${-w * 0.55} ${-h * 0.05}, 0 0 Z`;
 }
 
-/** Sunflower petal: smooth sides + symmetric dome tip (one continuous curve, no fork). */
+/** Sunflower petal — lanceolate like photo: narrow base, mid bulge, smooth rounded tip. */
 function sunflowerPetalPath(w: number, h: number, skew: number, bulge: number): string {
-  const mx = w * (0.36 + bulge * 0.34);
-  const belly = 0.32 + bulge * 0.12;
-  const tipX = skew * w * 0.05;
-  const tipY = -h * 0.92;
-  const domeY = tipY - h * 0.06;
-  const topL = tipX - w * 0.045;
-  const topR = tipX + w * 0.045;
-  const joinY = tipY - h * 0.012;
+  const mx = w * (0.44 + bulge * 0.2);
+  const baseN = w * (0.09 + bulge * 0.02);
+  const midY = -h * (0.4 + bulge * 0.06);
+  const tipX = skew * w * 0.03;
+  const tipFootY = -h * (0.9 + bulge * 0.04);
+  const domeY = -h * (0.97 + bulge * 0.02);
+  const topL = tipX - w * 0.032;
+  const topR = tipX + w * 0.032;
+  const taperY = -h * 0.82;
   return [
     "M 0 0",
-    `C ${-w * 0.1} ${-h * 0.04}, ${-mx * 0.55} ${-h * belly}, ${-mx * 0.88} ${-h * (belly + 0.1)}`,
-    `C ${-mx * 1.02} ${-h * (belly + 0.22)}, ${-mx * 0.95} ${-h * (belly + 0.36)}, ${-mx * 0.75} ${-h * (belly + 0.48)}`,
-    `C ${-mx * 0.52} ${-h * 0.78}, ${-mx * 0.2} ${-h * 0.9}, ${topL} ${joinY}`,
-    `C ${tipX} ${domeY}, ${tipX} ${domeY}, ${topR} ${joinY}`,
-    `C ${mx * 0.2} ${-h * 0.9}, ${mx * 0.52} ${-h * 0.78}, ${mx * 0.75} ${-h * (belly + 0.48)}`,
-    `C ${mx * 0.95} ${-h * (belly + 0.36)}, ${mx * 1.02} ${-h * (belly + 0.22)}, ${mx * 0.88} ${-h * (belly + 0.1)}`,
-    `C ${mx * 0.55} ${-h * belly}, ${w * 0.1} ${-h * 0.04}, 0 0 Z`,
+    `C ${-baseN} ${-h * 0.025}, ${-mx * 0.48} ${-h * 0.17}, ${-mx} ${midY}`,
+    `C ${-mx * 0.96} ${-h * 0.56}, ${-mx * 0.58} ${taperY}, ${-mx * 0.14} ${tipFootY}`,
+    `C ${-mx * 0.04} ${tipFootY + h * 0.01}, ${topL} ${tipFootY + h * 0.006}, ${topL} ${tipFootY}`,
+    `C ${tipX} ${domeY}, ${tipX} ${domeY}, ${topR} ${tipFootY}`,
+    `C ${topR} ${tipFootY + h * 0.006}, ${mx * 0.04} ${tipFootY + h * 0.01}, ${mx * 0.14} ${tipFootY}`,
+    `C ${mx * 0.58} ${taperY}, ${mx * 0.96} ${-h * 0.56}, ${mx} ${midY}`,
+    `C ${mx * 0.48} ${-h * 0.17}, ${baseN} ${-h * 0.025}, 0 0 Z`,
   ].join(" ");
 }
 
@@ -246,18 +247,26 @@ function FloretShape({
           <stop offset="0%" stopColor="#ffffff" stopOpacity="0.72" />
           <stop offset="100%" stopColor={tip} stopOpacity="0" />
         </radialGradient>
+        {morph > 0.2 && (
+          <linearGradient id={`${gradId}-sun`} x1="0.5" y1="1" x2="0.5" y2="0">
+            <stop offset="0%" stopColor={outer} stopOpacity="0.95" />
+            <stop offset="40%" stopColor={inner} />
+            <stop offset="100%" stopColor={tip} stopOpacity="0.98" />
+          </linearGradient>
+        )}
       </defs>
       {interactive && mode === "remove" && (
         <circle r={s * 1.15} fill="none" stroke={outer} strokeWidth="0.8" strokeOpacity="0.35" strokeDasharray="2 3" />
       )}
-      {Array.from({ length: Math.round(4 + morph * 12) }, (_, i) => {
-        const petalCount = Math.round(4 + morph * 12);
+      {Array.from({ length: Math.round(4 + morph * 16) }, (_, i) => {
+        const petalCount = Math.round(4 + morph * 16);
         const baseAngle = (360 / petalCount) * i;
         const jitterA = (rand(i) - 0.5) * 26 * (1 - morph);
-        const w = s * (0.62 + rand(i + 1) * 0.24 * (1 - morph * 0.85)) * (1 - morph * 0.28);
-        const h = s * (0.88 + rand(i + 2) * 0.28 * (1 - morph * 0.85)) * (1 + morph * 1.75);
+        const w = s * (0.62 + rand(i + 1) * 0.24 * (1 - morph * 0.85)) * (1 - morph * 0.38);
+        const h = s * (0.88 + rand(i + 2) * 0.28 * (1 - morph * 0.85)) * (1 + morph * 2.15);
         const skew = (rand(i + 3) - 0.5) * 0.22 * (1 - morph);
         const path = buildPetalPath(w, h, skew, morph);
+        const fillUrl = morph > 0.2 ? `url(#${gradId}-sun)` : `url(#${gradId})`;
         const petalStrokeW = 0.32 + morph * 0.3;
         const petalStrokeOp = 0.22 + morph * 0.3;
         const petalStroke = morph > 0.15
@@ -265,15 +274,18 @@ function FloretShape({
           : outer;
         return (
           <g key={i} transform={`rotate(${baseAngle + jitterA})`}>
-            <path d={path} fill={`url(#${gradId})`} stroke={petalStroke}
+            <path d={path} fill={fillUrl} stroke={petalStroke}
               strokeWidth={petalStrokeW} strokeOpacity={petalStrokeOp}
               strokeLinejoin="round" strokeLinecap="round" />
             {morph < 0.35 && <path d={path} fill={`url(#${tipGradId})`} />}
           </g>
         );
       })}
-      <circle r={s * (0.10 + morph * 0.14)} fill={centerOuter} opacity={0.75 + morph * 0.15} />
-      <circle r={s * (0.04 + morph * 0.02)} fill={morph > 0.4 ? "#3d2810" : "#fffef8"} opacity={0.65 + morph * 0.2} />
+      <circle r={s * (0.10 + morph * 0.2)} fill={centerOuter} opacity={0.75 + morph * 0.15} />
+      <circle r={s * (0.05 + morph * 0.03)} fill={morph > 0.35 ? "#3d2810" : "#fffef8"} opacity={0.65 + morph * 0.2} />
+      {morph > 0.5 && (
+        <circle r={s * (0.14 + morph * 0.08)} fill="#c87818" opacity={0.5 + morph * 0.25} />
+      )}
     </g>
   );
 }
@@ -889,10 +901,10 @@ export default function App() {
           </div>
 
           <p style={{
-            marginTop: "2rem", minHeight: "3em",
-            fontSize: "1.25rem", letterSpacing: "0.22em", lineHeight: 2,
+            marginTop: "2rem", minHeight: "4em", maxWidth: 320, marginLeft: "auto", marginRight: "auto",
+            fontSize: "1.1rem", letterSpacing: "0.18em", lineHeight: 2,
             color: "#a64d7a", fontStyle: "italic", textAlign: "center",
-            fontFamily: "inherit",
+            fontFamily: "inherit", wordBreak: "keep-all",
           }}>
             {BLESSING_MESSAGE.slice(0, blessingTyped)}
             {dropletLanded && blessingTyped < BLESSING_MESSAGE.length && (
