@@ -89,6 +89,7 @@ const PINK_PALETTE: { inner: string; outer: string; tip: string }[] = [
   { inner: "#eca8c0", outer: "#c8809c", tip: "#fceef4" },
   { inner: "#f8dce8", outer: "#dcb8c8", tip: "#ffffff" },
 ];
+const HANDOVER_PETAL_SKY = { inner: "#aad2ea", outer: "#7eb8d8" };
 const BLESSING_MESSAGE = "あなたは美しい";
 const BLESSING_DROP_MS = 10_000;
 const BLESSING_TYPE_MS = 380;
@@ -472,11 +473,11 @@ export default function App() {
           from { transform: rotate(0deg); }
           to   { transform: rotate(360deg); }
         }
-        @keyframes petalFall {
-          0%   { transform: translateY(-12vh) rotate(0deg); opacity: 0; }
+        @keyframes petalRise {
+          0%   { transform: translateY(12vh) rotate(0deg); opacity: 0; }
           12%  { opacity: 0.95; }
           88%  { opacity: 0.95; }
-          100% { transform: translateY(110vh) rotate(380deg); opacity: 0; }
+          100% { transform: translateY(-110vh) rotate(-380deg); opacity: 0; }
         }
         /* handover: caption below centered flower; back button at bottom center */
         .handover-caption { top: calc(50% + 100px); }
@@ -933,24 +934,26 @@ export default function App() {
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           padding: "2rem 1.5rem", animation: "fadeUp 1.4s ease-out both",
         }}>
-          {/* small petals drifting down after the touch — continues until back */}
+          {/* small petals drifting up after the touch — continues until back */}
           {handoverTouched && (
             <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
               {Array.from({ length: 14 }).map((_, i) => {
-                const c = PINK_PALETTE[i % PINK_PALETTE.length];
+                const pink = PINK_PALETTE[i % PINK_PALETTE.length];
+                const inner = lerpHex(pink.inner, HANDOVER_PETAL_SKY.inner, 0.5);
+                const outer = lerpHex(pink.outer, HANDOVER_PETAL_SKY.outer, 0.5);
                 const left = (i * 37 + 6) % 100;
                 const dur = 7 + (i % 5) * 1.6;
                 const delay = (i % 7) * 0.7;
                 const size = 7 + (i % 3) * 3;
                 return (
                   <div key={i} style={{
-                    position: "absolute", top: 0, left: `${left}%`,
+                    position: "absolute", bottom: 0, left: `${left}%`,
                     width: size, height: size * 0.72,
-                    background: c.inner,
+                    background: inner,
                     borderRadius: "50% 50% 50% 50% / 62% 62% 38% 38%",
-                    boxShadow: `0 0 4px ${c.outer}`,
+                    boxShadow: `0 0 4px ${outer}`,
                     opacity: 0,
-                    animation: `petalFall ${dur}s linear ${delay}s infinite`,
+                    animation: `petalRise ${dur}s linear ${delay}s infinite`,
                   }} />
                 );
               })}
