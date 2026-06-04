@@ -91,8 +91,11 @@ const PINK_PALETTE: { inner: string; outer: string; tip: string }[] = [
 ];
 const HANDOVER_PETAL_SKY = { inner: "#aad2ea", outer: "#7eb8d8" };
 const HANDOVER_PETAL_YELLOW = { inner: "#f5d04a", outer: "#d4a820" };
-const SUNFLOWER_COLORS = { inner: "#f8c818", outer: "#e0a808", tip: "#ffe850" };
-const SUNFLOWER_CENTER = { inner: "#7a5230", outer: "#4a3018" };
+const SUNFLOWER_PETAL_BASE = "#F5A623";
+const SUNFLOWER_PETAL_TIP = "#FFD93B";
+const SUNFLOWER_DISK_OUTER = "#5C4033";
+const SUNFLOWER_DISK_INNER = "#3d2a22";
+const SUNFLOWER_GOLDEN_ANGLE = (137.50776405 * Math.PI) / 180;
 const HANDOVER_SUNFLOWER_MS = 10_000;
 const BLESSING_MESSAGE = "あなたを解放させてみますか";
 const BLESSING_DROP_MS = 10_000;
@@ -155,56 +158,151 @@ function hydrangeaPetalPath(w: number, h: number, skew: number): string {
   return `M 0 0 C ${w * 0.55} ${-h * 0.05}, ${w * (0.55 + skew)} ${-h * 0.65}, ${skew * w * 0.5} ${-h} C ${-w * (0.55 - skew)} ${-h * 0.65}, ${-w * 0.55} ${-h * 0.05}, 0 0 Z`;
 }
 
-/** Sunflower petal — lanceolate like photo: narrow base, mid bulge, smooth rounded tip. */
-function sunflowerPetalPath(w: number, h: number, skew: number, bulge: number): string {
-  const mx = w * (0.44 + bulge * 0.2);
-  const baseN = w * (0.09 + bulge * 0.02);
-  const midY = -h * (0.4 + bulge * 0.06);
-  const tipX = skew * w * 0.03;
-  const tipFootY = -h * (0.9 + bulge * 0.04);
-  const domeY = -h * (0.97 + bulge * 0.02);
-  const topL = tipX - w * 0.032;
-  const topR = tipX + w * 0.032;
-  const taperY = -h * 0.82;
+/** Ray floret: spatula / teardrop with soft rounded tip (base at origin, tip up). */
+function rayPetalPath(halfW: number, len: number): string {
+  const belly = -len * 0.4;
+  const tipY = -len * 0.9;
+  const dome = -len * 0.97;
+  const w = halfW;
   return [
     "M 0 0",
-    `C ${-baseN} ${-h * 0.025}, ${-mx * 0.48} ${-h * 0.17}, ${-mx} ${midY}`,
-    `C ${-mx * 0.96} ${-h * 0.56}, ${-mx * 0.58} ${taperY}, ${-mx * 0.14} ${tipFootY}`,
-    `C ${-mx * 0.04} ${tipFootY + h * 0.01}, ${topL} ${tipFootY + h * 0.006}, ${topL} ${tipFootY}`,
-    `C ${tipX} ${domeY}, ${tipX} ${domeY}, ${topR} ${tipFootY}`,
-    `C ${topR} ${tipFootY + h * 0.006}, ${mx * 0.04} ${tipFootY + h * 0.01}, ${mx * 0.14} ${tipFootY}`,
-    `C ${mx * 0.58} ${taperY}, ${mx * 0.96} ${-h * 0.56}, ${mx} ${midY}`,
-    `C ${mx * 0.48} ${-h * 0.17}, ${baseN} ${-h * 0.025}, 0 0 Z`,
+    `C ${-w * 0.32} ${-len * 0.035}, ${-w * 0.95} ${belly * 0.55}, ${-w} ${belly}`,
+    `C ${-w * 0.92} ${-len * 0.62}, ${-w * 0.5} ${-len * 0.82}, ${-w * 0.2} ${tipY}`,
+    `C ${-w * 0.06} ${dome}, 0 ${dome}, ${w * 0.06} ${dome}`,
+    `C ${w * 0.2} ${tipY}, ${w * 0.5} ${-len * 0.82}, ${w * 0.92} ${-len * 0.62}`,
+    `C ${w} ${belly}, ${w * 0.95} ${belly * 0.55}, ${w * 0.32} ${-len * 0.035}`,
+    "Z",
   ].join(" ");
 }
 
-function buildPetalPath(w: number, h: number, skew: number, morph: number): string {
-  if (morph < 0.1) return hydrangeaPetalPath(w, h, skew);
-  const bulge = Math.min(1, (morph - 0.1) / 0.9);
-  return sunflowerPetalPath(w, h, skew * (1 - bulge * 0.5), bulge);
+const SUNFLOWER_LAYERS = [
+  { count: 22, lenMul: 0.7, wMul: 0.52, rotOffset: 7.5, opacity: 0.88 },
+  { count: 22, lenMul: 0.86, wMul: 0.66, rotOffset: 4.2, opacity: 0.94 },
+  { count: 24, lenMul: 1, wMul: 0.8, rotOffset: 0, opacity: 1 },
+] as const;
+
+function SunflowerShape({ seed, radius = 52 }: { seed: number; radius?: number }) {
+  const rand = (n: number) => {
+    const v = Math.sin(seed * 9.7 + n * 3.1) * 10000;
+    return v - Math.floor(v);
+  };
+  const diskR = radius * 0.38;
+  const baseLen = radius * 0.92;
+  const baseW = radius * 0.2;
+  const seedCount = 150;
+
+  const diskDots = Array.from({ length: seedCount }, (_, i) => {
+    const angle = i * SUNFLOWER_GOLDEN_ANGLE;
+    const t = (i + 0.5) / seedCount;
+    const r = diskR * Math.sqrt(t) * (0.92 + rand(i) * 0.08);
+    const jitter = (rand(i + 40) - 0.5) * diskR * 0.04;
+    return {
+      x: Math.cos(angle) * (r + jitter),
+      y: Math.sin(angle) * (r + jitter),
+      size: 0.35 + rand(i + 80) * 0.4,
+      shade: t,
+    };
+  });
+
+  return (
+    <g>
+      <defs>
+        <linearGradient id="sun-ray-grad" x1="0.5" y1="1" x2="0.5" y2="0">
+          <stop offset="0%" stopColor={SUNFLOWER_PETAL_BASE} />
+          <stop offset="45%" stopColor="#FBC630" />
+          <stop offset="100%" stopColor={SUNFLOWER_PETAL_TIP} />
+        </linearGradient>
+        <radialGradient id="sun-disk-grad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={SUNFLOWER_DISK_INNER} />
+          <stop offset="72%" stopColor="#4a3428" />
+          <stop offset="100%" stopColor={SUNFLOWER_DISK_OUTER} />
+        </radialGradient>
+      </defs>
+      {SUNFLOWER_LAYERS.map((layer, li) => (
+        <g key={li} opacity={layer.opacity}>
+          {Array.from({ length: layer.count }, (_, i) => {
+            const angle =
+              (360 / layer.count) * i
+              + layer.rotOffset
+              + (rand(i + li * 31) - 0.5) * 3.8;
+            const lenMul = layer.lenMul * (1 + (rand(i + li + 1) - 0.5) * 0.06);
+            const wMul = layer.wMul * (1 + (rand(i + li + 2) - 0.5) * 0.05);
+            const len = baseLen * lenMul;
+            const hw = baseW * wMul;
+            const path = rayPetalPath(hw, len);
+            const strokeOp = 0.14 + rand(i + li + 3) * 0.08;
+            return (
+              <g key={i} transform={`rotate(${angle})`}>
+                <path d={path} fill="url(#sun-ray-grad)" stroke="#E8A020"
+                  strokeWidth={0.28} strokeOpacity={strokeOp}
+                  strokeLinejoin="round" strokeLinecap="round" />
+              </g>
+            );
+          })}
+        </g>
+      ))}
+      <circle r={diskR} fill="url(#sun-disk-grad)" />
+      {diskDots.map((d, i) => (
+        <circle key={i} cx={d.x} cy={d.y} r={d.size}
+          fill={lerpHex(SUNFLOWER_DISK_INNER, SUNFLOWER_DISK_OUTER, d.shade * 0.85 + 0.08)}
+          opacity={0.75 + rand(i + 200) * 0.2} />
+      ))}
+    </g>
+  );
+}
+
+function HandoverCenterFlower({ blendT }: { blendT: number }) {
+  const born = Date.now() - 60_000;
+  const hOp = blendT < 0.48 ? 1 : Math.max(0, 1 - (blendT - 0.48) / 0.46);
+  const sOp = blendT < 0.42 ? 0 : Math.min(1, (blendT - 0.42) / 0.52);
+  const breath = sOp > 0.75;
+
+  return (
+    <g style={breath ? {
+      transformOrigin: "center", transformBox: "fill-box",
+      animation: "sunflowerBreath 4s ease-in-out infinite",
+    } : undefined}>
+      {hOp > 0.02 && (
+        <g opacity={hOp}>
+          <FloretShape
+            floret={{
+              id: -1, x: 0, y: 0, r: 52, rot: 0, seed: 8800, colorIndex: 0,
+              born,
+            }}
+            colors={PINK_PALETTE[0]}
+            mode="grow"
+            onTap={() => {}}
+            interactive={false}
+            skipDepth
+          />
+        </g>
+      )}
+      {sOp > 0.02 && (
+        <g opacity={sOp}>
+          <SunflowerShape seed={8800} />
+        </g>
+      )}
+    </g>
+  );
 }
 
 function FloretShape({
   floret, mode, onTap, useFloatIn = false,
   colors, interactive = true, skipDepth = false, sizeMul = 1,
-  sunflowerMorph = 0,
 }: {
   floret: Floret; mode: GrowMode; onTap: (id: number) => void; useFloatIn?: boolean;
   colors?: { inner: string; outer: string; tip: string };
   interactive?: boolean;
   skipDepth?: boolean;
   sizeMul?: number;
-  sunflowerMorph?: number;
 }) {
   const paletteEntry = colors ?? PALETTE[floret.colorIndex];
-  const morph = Math.max(0, Math.min(1, sunflowerMorph));
   const { x: cx, y: cy, r: size, rot, inner, outer, tip, seed } = {
     ...floret,
-    inner: lerpHex(paletteEntry.inner, SUNFLOWER_COLORS.inner, morph),
-    outer: lerpHex(paletteEntry.outer, SUNFLOWER_COLORS.outer, morph),
-    tip: lerpHex(paletteEntry.tip, SUNFLOWER_COLORS.tip, morph),
+    inner: paletteEntry.inner,
+    outer: paletteEntry.outer,
+    tip: paletteEntry.tip,
   };
-  const centerOuter = lerpHex(outer, SUNFLOWER_CENTER.outer, morph);
   const s = size * 0.62 * sizeMul;
   const rand = (n: number) => {
     const v = Math.sin(seed * 9.7 + n * 3.1) * 10000;
@@ -247,45 +345,25 @@ function FloretShape({
           <stop offset="0%" stopColor="#ffffff" stopOpacity="0.72" />
           <stop offset="100%" stopColor={tip} stopOpacity="0" />
         </radialGradient>
-        {morph > 0.2 && (
-          <linearGradient id={`${gradId}-sun`} x1="0.5" y1="1" x2="0.5" y2="0">
-            <stop offset="0%" stopColor={outer} stopOpacity="0.95" />
-            <stop offset="40%" stopColor={inner} />
-            <stop offset="100%" stopColor={tip} stopOpacity="0.98" />
-          </linearGradient>
-        )}
       </defs>
       {interactive && mode === "remove" && (
         <circle r={s * 1.15} fill="none" stroke={outer} strokeWidth="0.8" strokeOpacity="0.35" strokeDasharray="2 3" />
       )}
-      {Array.from({ length: Math.round(4 + morph * 16) }, (_, i) => {
-        const petalCount = Math.round(4 + morph * 16);
-        const baseAngle = (360 / petalCount) * i;
-        const jitterA = (rand(i) - 0.5) * 26 * (1 - morph);
-        const w = s * (0.62 + rand(i + 1) * 0.24 * (1 - morph * 0.85)) * (1 - morph * 0.38);
-        const h = s * (0.88 + rand(i + 2) * 0.28 * (1 - morph * 0.85)) * (1 + morph * 2.15);
-        const skew = (rand(i + 3) - 0.5) * 0.22 * (1 - morph);
-        const path = buildPetalPath(w, h, skew, morph);
-        const fillUrl = morph > 0.2 ? `url(#${gradId}-sun)` : `url(#${gradId})`;
-        const petalStrokeW = 0.32 + morph * 0.3;
-        const petalStrokeOp = 0.22 + morph * 0.3;
-        const petalStroke = morph > 0.15
-          ? lerpHex(outer, lerpHex(outer, SUNFLOWER_COLORS.outer, 0.35), Math.min(1, (morph - 0.15) / 0.85) * 0.55)
-          : outer;
+      {[0, 90, 180, 270].map((a, i) => {
+        const jitterA = (rand(i) - 0.5) * 26;
+        const w = s * (0.62 + rand(i + 1) * 0.24);
+        const h = s * (0.88 + rand(i + 2) * 0.28);
+        const skew = (rand(i + 3) - 0.5) * 0.22;
+        const path = hydrangeaPetalPath(w, h, skew);
         return (
-          <g key={i} transform={`rotate(${baseAngle + jitterA})`}>
-            <path d={path} fill={fillUrl} stroke={petalStroke}
-              strokeWidth={petalStrokeW} strokeOpacity={petalStrokeOp}
-              strokeLinejoin="round" strokeLinecap="round" />
-            {morph < 0.35 && <path d={path} fill={`url(#${tipGradId})`} />}
+          <g key={a} transform={`rotate(${a + jitterA})`}>
+            <path d={path} fill={`url(#${gradId})`} stroke={outer} strokeWidth="0.32" strokeOpacity="0.22" />
+            <path d={path} fill={`url(#${tipGradId})`} />
           </g>
         );
       })}
-      <circle r={s * (0.10 + morph * 0.2)} fill={centerOuter} opacity={0.75 + morph * 0.15} />
-      <circle r={s * (0.05 + morph * 0.03)} fill={morph > 0.35 ? "#3d2810" : "#fffef8"} opacity={0.65 + morph * 0.2} />
-      {morph > 0.5 && (
-        <circle r={s * (0.14 + morph * 0.08)} fill="#c87818" opacity={0.5 + morph * 0.25} />
-      )}
+      <circle r={s * 0.10} fill={outer} opacity="0.75" />
+      <circle r={s * 0.04} fill="#fffef8" opacity="0.65" />
     </g>
   );
 }
@@ -553,6 +631,10 @@ export default function App() {
         @keyframes spin12 {
           from { transform: rotate(0deg); }
           to   { transform: rotate(360deg); }
+        }
+        @keyframes sunflowerBreath {
+          0%, 100% { transform: scale(1); }
+          50%      { transform: scale(1.03); }
         }
         @keyframes petalRise {
           0%   { transform: translateY(12vh) rotate(0deg); opacity: 0; }
@@ -1069,28 +1151,17 @@ export default function App() {
               audio.play().catch(() => {});
             }}>
             <div style={{
-              transition: "transform 0.6s ease",
+              transition: "transform 0.6s ease, filter 1.2s ease",
               transform: handoverTouched ? "scale(1.15)" : "scale(1)",
-              filter: "blur(1px)",
+              filter: sunflowerBlendT > 0 ? "blur(2.2px)" : "blur(1px)",
             }}>
-            <svg viewBox="-70 -70 140 140" width="120" height="120" style={{
-              display: "block",
+            <svg viewBox="-95 -98 190 196" width="120" height="120" style={{
+              display: "block", overflow: "visible",
               animation: handoverTouched
                 ? `spin12 ${sunflowerBlendT > 0 ? 24 : 12}s linear infinite`
                 : "petalGlow 2.8s ease-in-out infinite, spin12 12s linear infinite",
             }}>
-              <FloretShape
-                floret={{
-                  id: -1, x: 0, y: 0, r: 52, rot: 0, seed: 8800, colorIndex: 0,
-                  born: Date.now() - 60_000,
-                }}
-                colors={PINK_PALETTE[0]}
-                sunflowerMorph={sunflowerBlendT}
-                mode="grow"
-                onTap={() => {}}
-                interactive={false}
-                skipDepth
-              />
+              <HandoverCenterFlower blendT={sunflowerBlendT} />
             </svg>
             </div>
           </div>
