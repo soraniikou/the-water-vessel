@@ -2,6 +2,18 @@
 体験→
 https://the-water-vessel.vercel.app
 
+<!-- びっくりマーク！画像1 -->
+<img src="azisai2.png" width="100%" alt="azisai2">
+
+<!-- びっくりマーク！画像2 -->
+<img src="azisai3.png" width="100%" alt="azisai3">
+
+<!-- びっくりマーク！画像3 -->
+<img src="azisai4.png" width="100%" alt="azisai4">
+
+<!-- びっくりマーク！画像4 -->
+<img src="azisai5.png" width="100%" alt="azisai5">
+
 ​🌸 使い方・体験の流れ:
 ​キャンバスのカスタマイズ: アプリを開くと、現在の心の状態を反映するように、画面の好きな所をタップして、紫陽花の数を自由に増やしたり減らしたりできます。
 ​水面の自分と向き合う: そのビジュアルはあなた自身。水面に反射し、内に閉じ込め、本当の感情や不安を抑え込んでいる姿を映し出します。
