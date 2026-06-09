@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type MouseEvent } from "react";
 
 // ============================================================
 //  the water vessel
@@ -97,6 +97,9 @@ const SUNFLOWER_DISK_OUTER = "#5C4033";
 const SUNFLOWER_DISK_INNER = "#3d2a22";
 const SUNFLOWER_GOLDEN_ANGLE = (137.50776405 * Math.PI) / 180;
 const HANDOVER_SUNFLOWER_MS = 10_000;
+const HANDOVER_FLOWER_R = 52;
+const HANDOVER_SUNFLOWER_SCALE = 1.75;
+const HANDOVER_SUNFLOWER_R = HANDOVER_FLOWER_R * HANDOVER_SUNFLOWER_SCALE;
 const BLESSING_MESSAGE = "あなたを解放させてみますか";
 const BLESSING_DROP_MS = 10_000;
 const BLESSING_TYPE_MS = 380;
@@ -158,27 +161,31 @@ function hydrangeaPetalPath(w: number, h: number, skew: number): string {
   return `M 0 0 C ${w * 0.55} ${-h * 0.05}, ${w * (0.55 + skew)} ${-h * 0.65}, ${skew * w * 0.5} ${-h} C ${-w * (0.55 - skew)} ${-h * 0.65}, ${-w * 0.55} ${-h * 0.05}, 0 0 Z`;
 }
 
-/** Ray floret: spatula / teardrop with soft rounded tip (base at origin, tip up). */
+/** Ray floret: wide spatula / teardrop, smooth rounded tip (no fork). */
 function rayPetalPath(halfW: number, len: number): string {
-  const belly = -len * 0.4;
-  const tipY = -len * 0.9;
-  const dome = -len * 0.97;
   const w = halfW;
+  const H = len;
+  const belly = -H * 0.4;
+  const tipY = -H * 0.86;
+  const domeY = -H * 0.94;
+  const mx = w * 1.05;
+  const base = w * 0.3;
+  const topL = -w * 0.14;
+  const topR = w * 0.14;
   return [
     "M 0 0",
-    `C ${-w * 0.32} ${-len * 0.035}, ${-w * 0.95} ${belly * 0.55}, ${-w} ${belly}`,
-    `C ${-w * 0.92} ${-len * 0.62}, ${-w * 0.5} ${-len * 0.82}, ${-w * 0.2} ${tipY}`,
-    `C ${-w * 0.06} ${dome}, 0 ${dome}, ${w * 0.06} ${dome}`,
-    `C ${w * 0.2} ${tipY}, ${w * 0.5} ${-len * 0.82}, ${w * 0.92} ${-len * 0.62}`,
-    `C ${w} ${belly}, ${w * 0.95} ${belly * 0.55}, ${w * 0.32} ${-len * 0.035}`,
-    "Z",
+    `C ${-base} ${-H * 0.028}, ${-mx * 0.72} ${belly * 0.52}, ${-mx} ${belly}`,
+    `C ${-mx * 0.94} ${-H * 0.56}, ${-mx * 0.5} ${-H * 0.72}, ${topL} ${tipY}`,
+    `C 0 ${domeY}, 0 ${domeY}, ${topR} ${tipY}`,
+    `C ${mx * 0.5} ${-H * 0.72}, ${mx * 0.94} ${-H * 0.56}, ${mx} ${belly}`,
+    `C ${mx * 0.72} ${belly * 0.52}, ${base} ${-H * 0.028}, 0 0 Z`,
   ].join(" ");
 }
 
 const SUNFLOWER_LAYERS = [
-  { count: 22, lenMul: 0.7, wMul: 0.52, rotOffset: 7.5, opacity: 0.88 },
-  { count: 22, lenMul: 0.86, wMul: 0.66, rotOffset: 4.2, opacity: 0.94 },
-  { count: 24, lenMul: 1, wMul: 0.8, rotOffset: 0, opacity: 1 },
+  { count: 22, lenMul: 0.72, wMul: 0.58, rotOffset: 8.2, opacity: 0.9 },
+  { count: 22, lenMul: 0.87, wMul: 0.72, rotOffset: 4.5, opacity: 0.95 },
+  { count: 24, lenMul: 1, wMul: 0.86, rotOffset: 0, opacity: 1 },
 ] as const;
 
 function SunflowerShape({ seed, radius = 52 }: { seed: number; radius?: number }) {
@@ -187,65 +194,78 @@ function SunflowerShape({ seed, radius = 52 }: { seed: number; radius?: number }
     return v - Math.floor(v);
   };
   const diskR = radius * 0.38;
-  const baseLen = radius * 0.92;
-  const baseW = radius * 0.2;
-  const seedCount = 150;
+  const baseLen = radius * 0.9;
+  const baseW = radius * 0.26;
+  const seedCount = 165;
+  const gradUid = `sun-${seed}`;
 
   const diskDots = Array.from({ length: seedCount }, (_, i) => {
     const angle = i * SUNFLOWER_GOLDEN_ANGLE;
     const t = (i + 0.5) / seedCount;
-    const r = diskR * Math.sqrt(t) * (0.92 + rand(i) * 0.08);
-    const jitter = (rand(i + 40) - 0.5) * diskR * 0.04;
+    const r = diskR * Math.sqrt(t) * (0.9 + rand(i) * 0.1);
+    const jitter = (rand(i + 40) - 0.5) * diskR * 0.045;
     return {
       x: Math.cos(angle) * (r + jitter),
       y: Math.sin(angle) * (r + jitter),
-      size: 0.35 + rand(i + 80) * 0.4,
+      size: 0.4 + rand(i + 80) * 0.45,
       shade: t,
     };
   });
 
+  const renderLayer = (li: number) => {
+    const layer = SUNFLOWER_LAYERS[li];
+    return (
+      <g key={li} opacity={layer.opacity}>
+        {Array.from({ length: layer.count }, (_, i) => {
+          const angle =
+            (360 / layer.count) * i
+            + layer.rotOffset
+            + (rand(i + li * 31) - 0.5) * 3.6;
+          const lenMul = layer.lenMul * (1 + (rand(i + li + 1) - 0.5) * 0.055);
+          const wMul = layer.wMul * (1 + (rand(i + li + 2) - 0.5) * 0.048);
+          const len = baseLen * lenMul;
+          const hw = baseW * wMul;
+          const path = rayPetalPath(hw, len);
+          const gid = `${gradUid}-p-${li}-${i}`;
+          const strokeW = 0.22 * (radius / HANDOVER_FLOWER_R);
+          return (
+            <g key={i} transform={`rotate(${angle})`}>
+              <path d={path} fill={`url(#${gid})`} stroke="#D89818"
+                strokeWidth={strokeW} strokeOpacity={0.12}
+                strokeLinejoin="round" strokeLinecap="round" />
+            </g>
+          );
+        })}
+      </g>
+    );
+  };
+
   return (
     <g>
       <defs>
-        <linearGradient id="sun-ray-grad" x1="0.5" y1="1" x2="0.5" y2="0">
-          <stop offset="0%" stopColor={SUNFLOWER_PETAL_BASE} />
-          <stop offset="45%" stopColor="#FBC630" />
-          <stop offset="100%" stopColor={SUNFLOWER_PETAL_TIP} />
-        </linearGradient>
-        <radialGradient id="sun-disk-grad" cx="50%" cy="50%" r="50%">
+        <radialGradient id={`${gradUid}-disk`} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor={SUNFLOWER_DISK_INNER} />
-          <stop offset="72%" stopColor="#4a3428" />
+          <stop offset="68%" stopColor="#4a3428" />
           <stop offset="100%" stopColor={SUNFLOWER_DISK_OUTER} />
         </radialGradient>
+        {SUNFLOWER_LAYERS.map((layer, li) =>
+          Array.from({ length: layer.count }, (_, i) => (
+            <linearGradient key={`${li}-${i}`} id={`${gradUid}-p-${li}-${i}`} x1="0.5" y1="1" x2="0.5" y2="0">
+              <stop offset="0%" stopColor={SUNFLOWER_PETAL_BASE} />
+              <stop offset="42%" stopColor="#FBC630" />
+              <stop offset="100%" stopColor={SUNFLOWER_PETAL_TIP} />
+            </linearGradient>
+          )),
+        )}
       </defs>
-      {SUNFLOWER_LAYERS.map((layer, li) => (
-        <g key={li} opacity={layer.opacity}>
-          {Array.from({ length: layer.count }, (_, i) => {
-            const angle =
-              (360 / layer.count) * i
-              + layer.rotOffset
-              + (rand(i + li * 31) - 0.5) * 3.8;
-            const lenMul = layer.lenMul * (1 + (rand(i + li + 1) - 0.5) * 0.06);
-            const wMul = layer.wMul * (1 + (rand(i + li + 2) - 0.5) * 0.05);
-            const len = baseLen * lenMul;
-            const hw = baseW * wMul;
-            const path = rayPetalPath(hw, len);
-            const strokeOp = 0.14 + rand(i + li + 3) * 0.08;
-            return (
-              <g key={i} transform={`rotate(${angle})`}>
-                <path d={path} fill="url(#sun-ray-grad)" stroke="#E8A020"
-                  strokeWidth={0.28} strokeOpacity={strokeOp}
-                  strokeLinejoin="round" strokeLinecap="round" />
-              </g>
-            );
-          })}
-        </g>
-      ))}
-      <circle r={diskR} fill="url(#sun-disk-grad)" />
+      {renderLayer(2)}
+      {renderLayer(1)}
+      {renderLayer(0)}
+      <circle r={diskR} fill={`url(#${gradUid}-disk)`} />
       {diskDots.map((d, i) => (
         <circle key={i} cx={d.x} cy={d.y} r={d.size}
           fill={lerpHex(SUNFLOWER_DISK_INNER, SUNFLOWER_DISK_OUTER, d.shade * 0.85 + 0.08)}
-          opacity={0.75 + rand(i + 200) * 0.2} />
+          opacity={0.78 + rand(i + 200) * 0.18} />
       ))}
     </g>
   );
@@ -266,7 +286,7 @@ function HandoverCenterFlower({ blendT }: { blendT: number }) {
         <g opacity={hOp}>
           <FloretShape
             floret={{
-              id: -1, x: 0, y: 0, r: 52, rot: 0, seed: 8800, colorIndex: 0,
+              id: -1, x: 0, y: 0, r: HANDOVER_FLOWER_R, rot: 0, seed: 8800, colorIndex: 0,
               born,
             }}
             colors={PINK_PALETTE[0]}
@@ -279,7 +299,7 @@ function HandoverCenterFlower({ blendT }: { blendT: number }) {
       )}
       {sOp > 0.02 && (
         <g opacity={sOp}>
-          <SunflowerShape seed={8800} />
+          <SunflowerShape seed={8800} radius={HANDOVER_SUNFLOWER_R} />
         </g>
       )}
     </g>
@@ -512,8 +532,11 @@ export default function App() {
     });
   };
 
-  const handleBloomBackgroundTap = () => {
-    if (step === "tend" && mode === "grow") addFloret();
+  const handleGrowTap = (e: MouseEvent) => {
+    if (step !== "tend" || mode !== "grow") return;
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("input")) return;
+    addFloret();
   };
 
   const startIntro = () => {
@@ -527,13 +550,14 @@ export default function App() {
   };
 
   return (
-    <div style={{
+    <div onClick={handleGrowTap} style={{
       minHeight: "100vh", width: "100%",
       fontFamily: "'Shippori Mincho', 'Noto Serif JP', 'Hiragino Mincho ProN', serif",
       background: "linear-gradient(180deg, #dce4dc 0%, #e8ece6 50%, #d4ddd4 100%)",
       transition: "background 2s ease", color: "#3a3a3a",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
       padding: "2rem 1rem 3rem", position: "relative", overflow: "hidden", boxSizing: "border-box",
+      cursor: step === "tend" && mode === "grow" ? "pointer" : "default",
     }}>
       <div aria-hidden style={{
         position: "absolute", inset: 0, pointerEvents: "none",
@@ -648,12 +672,10 @@ export default function App() {
           88%  { opacity: 0.95; }
           100% { transform: translateY(110vh) rotate(380deg); opacity: 0; }
         }
-        /* handover: caption below centered flower; back button at bottom center */
-        .handover-caption { top: calc(50% + 100px); }
-        .handover-back { bottom: 2.5rem; }
+        /* handover: flower raised; caption clears enlarged sunflower */
+        .handover-caption { top: calc(35% + 158px); }
         @media (max-width: 600px) {
-          .handover-caption { top: calc(50% + 72px); }
-          .handover-back { bottom: 2rem; }
+          .handover-caption { top: calc(36% + 128px); }
         }
         .fade-up { animation: fadeUp 1.2s ease-out both; }
         .voice-line {
@@ -682,11 +704,10 @@ export default function App() {
         </p>
       </div>
 
-      <svg viewBox="-200 -200 400 780" width="100%" onClick={handleBloomBackgroundTap}
+      <svg viewBox="-200 -200 400 780" width="100%"
         style={{
           maxWidth: 360, height: "auto", zIndex: 1,
           transition: "filter 2s ease",
-          cursor: step === "tend" && mode === "grow" ? "pointer" : "default",
         }}>
         <rect x="-200" y="-200" width="400" height="780" fill="transparent" />
         <g style={{
@@ -1055,7 +1076,10 @@ export default function App() {
             )}
           </div>
 
-          <div style={{ position: "relative", zIndex: 2, textAlign: "center", maxWidth: 360 }}>
+          <div style={{
+            position: "relative", zIndex: 2, textAlign: "center", maxWidth: 360,
+            display: "flex", flexDirection: "column", alignItems: "center",
+          }}>
             <p style={{
               fontSize: "1.1rem", letterSpacing: "0.2em",
               color: "#e0e8f0", fontStyle: "italic", lineHeight: 2,
@@ -1070,19 +1094,18 @@ export default function App() {
             }}>
               諦めなければ続くよ
             </p>
+            <button type="button" onClick={() => setStep("handover")}
+              style={{
+                marginTop: "2rem",
+                padding: "0.6rem 1.8rem", fontFamily: "inherit",
+                fontSize: "0.85rem", letterSpacing: "0.25em",
+                background: "transparent", border: "1px solid rgba(200,216,232,0.4)",
+                borderRadius: "999px", color: "#c8d8e8", cursor: "pointer",
+                opacity: 0, animation: "whisperIn 1.6s ease-out 9s forwards",
+              }}>
+              next
+            </button>
           </div>
-
-          <button type="button" onClick={() => setStep("handover")}
-            style={{
-              position: "absolute", bottom: "2.5rem", left: "50%", transform: "translateX(-50%)",
-              padding: "0.6rem 1.8rem", fontFamily: "inherit",
-              fontSize: "0.85rem", letterSpacing: "0.25em",
-              background: "transparent", border: "1px solid rgba(200,216,232,0.4)",
-              borderRadius: "999px", color: "#c8d8e8", cursor: "pointer",
-              opacity: 0, animation: "whisperIn 1.6s ease-out 9s forwards",
-            }}>
-            next
-          </button>
         </div>
       )}
 
@@ -1138,8 +1161,9 @@ export default function App() {
           )}
 
           <div style={{
-            position: "absolute", left: "50%", top: "50%",
-            animation: "petalDescend 4s cubic-bezier(0.4, 0, 0.4, 1) both",
+            position: "absolute", left: "50%", top: "35%",
+            transform: "translate(-50%, -50%)",
+            animation: sunflowerBlendT < 0.05 ? "petalDescend 4s cubic-bezier(0.4, 0, 0.4, 1) both" : undefined,
             cursor: handoverTouched ? "default" : "pointer",
           }}
             onClick={() => {
@@ -1155,7 +1179,11 @@ export default function App() {
               transform: handoverTouched ? "scale(1.15)" : "scale(1)",
               filter: sunflowerBlendT > 0 ? "blur(2.2px)" : "blur(1px)",
             }}>
-            <svg viewBox="-95 -98 190 196" width="120" height="120" style={{
+            <svg
+              viewBox={`${-HANDOVER_SUNFLOWER_R * 1.12} ${-HANDOVER_SUNFLOWER_R * 1.15} ${HANDOVER_SUNFLOWER_R * 2.24} ${HANDOVER_SUNFLOWER_R * 2.3}`}
+              width={280}
+              height={290}
+              style={{
               display: "block", overflow: "visible",
               animation: handoverTouched
                 ? `spin12 ${sunflowerBlendT > 0 ? 24 : 12}s linear infinite`
@@ -1187,7 +1215,7 @@ export default function App() {
                 color: "#2a3a52", fontStyle: "italic",
                 margin: 0, fontFamily: "inherit",
               }}>
-                ここに　ゆり落ちる
+                どんな自分だとしても
               </p>
               {!handoverTouched && (
                 <p style={{
@@ -1200,38 +1228,35 @@ export default function App() {
                 </p>
               )}
               {handoverTouched && (
-                <p style={{
-                  marginTop: "1.5rem", minHeight: "1.8em",
-                  fontSize: "1.1rem", letterSpacing: "0.22em", color: "#a64d7a",
-                  fontStyle: "italic",
-                }}>
-                  {HANDOVER_MESSAGE.slice(0, handoverTyped)}
-                  {handoverTyped < HANDOVER_MESSAGE.length && <span style={{ opacity: 0.4 }}>｜</span>}
-                </p>
+                <>
+                  <p style={{
+                    marginTop: "1.5rem", minHeight: "1.8em",
+                    fontSize: "1.1rem", letterSpacing: "0.22em", color: "#a64d7a",
+                    fontStyle: "italic",
+                  }}>
+                    {HANDOVER_MESSAGE.slice(0, handoverTyped)}
+                    {handoverTyped < HANDOVER_MESSAGE.length && <span style={{ opacity: 0.4 }}>｜</span>}
+                  </p>
+                  <div style={{ marginTop: "1.5rem", pointerEvents: "auto" }}>
+                    <button type="button"
+                      onClick={() => {
+                        if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+                        setFlorets(seedBloom());
+                        setStep("open");
+                      }}
+                      style={{
+                        padding: "0.6rem 1.8rem", fontFamily: "inherit",
+                        fontSize: "0.85rem", letterSpacing: "0.25em",
+                        background: "transparent", border: "1px solid rgba(45,82,136,0.4)",
+                        borderRadius: "999px", color: "#2a3a52", cursor: "pointer",
+                        opacity: 0, animation: "whisperIn 1.6s ease-out 0.8s forwards",
+                      }}>
+                      back
+                    </button>
+                  </div>
+                </>
               )}
             </div>
-          </div>
-
-          <div className="handover-back" style={{
-            position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%)",
-          }}>
-            <button type="button"
-            onClick={() => {
-              if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-              setFlorets(seedBloom());
-              setStep("open");
-            }}
-            style={{
-              padding: "0.6rem 1.8rem", fontFamily: "inherit",
-              fontSize: "0.85rem", letterSpacing: "0.25em",
-              background: "transparent", border: "1px solid rgba(45,82,136,0.4)",
-              borderRadius: "999px", color: "#2a3a52", cursor: "pointer",
-              opacity: 0, animation: "whisperIn 1.6s ease-out 5.5s forwards",
-            }}>
-            back
-          </button>
           </div>
         </div>
       )}
