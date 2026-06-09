@@ -98,7 +98,7 @@ const SUNFLOWER_DISK_INNER = "#3d2a22";
 const SUNFLOWER_GOLDEN_ANGLE = (137.50776405 * Math.PI) / 180;
 const HANDOVER_SUNFLOWER_MS = 10_000;
 const HANDOVER_FLOWER_R = 52;
-const HANDOVER_SUNFLOWER_SCALE = 1.75;
+const HANDOVER_SUNFLOWER_SCALE = 1.75 * 1.6;
 const HANDOVER_SUNFLOWER_R = HANDOVER_FLOWER_R * HANDOVER_SUNFLOWER_SCALE;
 const BLESSING_MESSAGE = "あなたを解放させてみますか";
 const BLESSING_DROP_MS = 10_000;
@@ -1177,7 +1177,7 @@ export default function App() {
             <div style={{
               transition: "transform 0.6s ease, filter 1.2s ease",
               transform: handoverTouched ? "scale(1.15)" : "scale(1)",
-              filter: sunflowerBlendT > 0 ? "blur(2.2px)" : "blur(1px)",
+              filter: sunflowerBlendT > 0 ? "blur(3.2px)" : "blur(1px)",
             }}>
             <svg
               viewBox={`${-HANDOVER_SUNFLOWER_R * 1.12} ${-HANDOVER_SUNFLOWER_R * 1.15} ${HANDOVER_SUNFLOWER_R * 2.24} ${HANDOVER_SUNFLOWER_R * 2.3}`}
